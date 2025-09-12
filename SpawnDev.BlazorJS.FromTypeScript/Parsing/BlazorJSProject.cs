@@ -39,8 +39,8 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
         public async Task ProcessDir()
         {
             Modules.Clear();
-            var files = await FS.GetInfos(SourcePath, true);
-            foreach (var file in files)
+            var files = FS.EnumerateInfos(SourcePath, true);
+            await foreach (var file in files)
             {
                 if (file.Name.EndsWith(".d.ts"))
                 {
