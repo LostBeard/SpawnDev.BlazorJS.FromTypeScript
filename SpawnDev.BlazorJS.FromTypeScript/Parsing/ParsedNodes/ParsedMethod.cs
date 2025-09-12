@@ -74,9 +74,9 @@ public static Task {CSMethodName}({GetMethodParamsAsCSharp(this)})
 /// <summary>
 /// {SourceText?.Replace("\n", "\n/// ")}
 /// </summary>
-public static Task<{ReturnType!.GetTypeArgumentsDelimited(Parent.Name.TitleCaseInvariant())}> {CSMethodName}({GetMethodParamsAsCSharp(this)})
+public static Task<{ReturnType!.GetTypeArgumentsDelimited(Parent.CSClassName)}> {CSMethodName}({GetMethodParamsAsCSharp(this)})
 {{
-    return JS.CallAsync<{ReturnType!.GetTypeArgumentsDelimited(Parent.Name.TitleCaseInvariant())}>(""{JSNameSpaceName}""{GetMethodParamNames(this, ", ")});
+    return JS.CallAsync<{ReturnType!.GetTypeArgumentsDelimited(Parent.CSClassName)}>(""{JSNameSpaceName}""{GetMethodParamNames(this, ", ")});
 }}
 ".Trim();
             }
@@ -128,9 +128,9 @@ public Task {CSMethodName}({GetMethodParamsAsCSharp(this)})
 /// <summary>
 /// {SourceText?.Replace("\n", "\n/// ")}
 /// </summary>
-public Task<{ReturnType!.GetTypeArgumentsDelimited(Parent.Name.TitleCaseInvariant())}> {CSMethodName}({GetMethodParamsAsCSharp(this)})
+public Task<{ReturnType!.GetTypeArgumentsDelimited(Parent.CSClassName)}> {CSMethodName}({GetMethodParamsAsCSharp(this)})
 {{
-    return JSRef!.CallAsync<{ReturnType!.GetTypeArgumentsDelimited(Parent.Name.TitleCaseInvariant())}>(""{Name}""{GetMethodParamNames(this, ", ")});
+    return JSRef!.CallAsync<{ReturnType!.GetTypeArgumentsDelimited(Parent.CSClassName)}>(""{Name}""{GetMethodParamNames(this, ", ")});
 }}
 ".Trim();
             }
@@ -201,7 +201,7 @@ public {CSReturnType} {CSMethodName}({GetMethodParamsAsCSharp(this)})
                 {
                     ret = Regex.Replace(ret, "^Promise", "Task");
                 }
-                if (ret == "this") ret = Parent.Name.TitleCaseInvariant();
+                if (ret == "this") ret = Parent.CSClassName;
                 return ret;
             }
         }
