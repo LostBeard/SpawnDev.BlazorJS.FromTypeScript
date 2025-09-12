@@ -8,12 +8,12 @@ A tool for creating SpawnDev.BlazorJS.JSObject interop libraires from TypeScript
 - Click `File` > `Import *.d.ts Zip`
 - Select zip downloaded from [three-types/three-ts-types](https://github.com/three-types/three-ts-types/archive/refs/heads/master.zip)
 - Enter `THREE` into the `Import as?` prompt.
-- Wait (no progress indicator atm.)
+- Watch the progress indicator while it works.
 - Get notification of completed import.
 - Should see `Typescript` root folder and its sub-folder `THREE` populate with the typescript declaration files. (May need to collapse, expand the tree view.)
 - Right click the `TypeScript > THREE > src` folder and select `Extract JSObjects`
 - Enter a `Project name` like `Blazor.THREE` and click `Create`
-- Wait (no progress indicator atm.)
+- Watch the progress indicator while it works.
 - Should see `Blazor` root folder and its sub-folder `Blazor.THREE` populate with the JSObject files. (May need to collapse, expand the tree view.)
 
 Currently a WIP. Output needs improvement, code needs cleaning up, and TypeScript parsing needs modernizing.
