@@ -1,5 +1,5 @@
 # SpawnDev.BlazorJS.FromTypeScript
-A tool for creating [SpawnDev.BlazorJS.JSObject](](https://github.com/LostBeard/SpawnDev.BlazorJS?tab=readme-ov-file#jsobjects)) bindings from TypeScript Declarations files `*.d.ts` 
+A tool for creating [SpawnDev.BlazorJS.JSObject](https://github.com/LostBeard/SpawnDev.BlazorJS?tab=readme-ov-file#jsobjects) bindings from TypeScript Declarations files `*.d.ts` 
 
 [FromTypeScript Web App](https://lostbeard.github.io/SpawnDev.BlazorJS.FromTypeScript/)
 
