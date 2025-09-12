@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "SpawnDev.BlazorJS.FromTypeScript",
   "resources": {
-    "hash": "sha256-idN2KMrHsINaHeTIqOUW2WlSILVIiuaEQWcvKD5OPZ8=",
+    "hash": "sha256-xTJYzXK2bxdl4E15Ogtr0mGrp2DR7nzRJ3ZOvH93wxw=",
     "jsModuleNative": {
       "dotnet.native.js": "sha256-/FoNl5TwrvNZ2+O336M8aRHq3cve3xX3QGSPokxIRao="
     },
@@ -37,8 +37,8 @@
       "Microsoft.JSInterop.WebAssembly.wasm": "sha256-73fobmdfDEgPi5c9HIlVzjHZtWrtF7HElTQFBTEttnQ=",
       "netstandard.wasm": "sha256-IL05YAPZxhYNkPvI+S3v+qLllIgRg+4oiCDwbpbv9EQ=",
       "Radzen.Blazor.wasm": "sha256-m2CKuFtsU2iarEI7SKkXibVmjogtC2BghEiylv6w4NA=",
-      "Sdcb.TypeScriptAST.wasm": "sha256-h/7haxWmiNYXIffAlYP4n7sM76QJoZUEfES1YB3Zhpk=",
-      "SpawnDev.BlazorJS.FromTypeScript.wasm": "sha256-sC5luD0tuPDt6O3DozEPhvuCXSfScwycyM1v8zXmOVs=",
+      "Sdcb.TypeScriptAST.wasm": "sha256-mEk9K01wu/yOE3onyEMBhEWDeZCg+gDyBqPWkm+tP0s=",
+      "SpawnDev.BlazorJS.FromTypeScript.wasm": "sha256-zAyo6m6UxdmD2oOQOlPFRqQgUZRxFoJcwVkAmJykuaQ=",
       "SpawnDev.BlazorJS.wasm": "sha256-60SWVAB7GsmcJwpiMV4omQB/ULP2AabbHfmOomwTw/c=",
       "System.Collections.Concurrent.wasm": "sha256-x0V9A1/IcfHIqZIU3mDTT2AQL0uoH+ebk0T5OrK2qS8=",
       "System.Collections.NonGeneric.wasm": "sha256-d2dgZCZQmCzXQIvNyQzI9jW1OB06UswrOW/L5NaKHVA=",
@@ -78,7 +78,7 @@
       "System.Security.Cryptography.wasm": "sha256-P8kq6OWPVYA/1fw64DhySxUvCXn3hrwwbLRMB7uVDlY=",
       "System.Text.Encodings.Web.wasm": "sha256-YxPC5kJwv41QCItEw6SvRdkb8WBvGrUsrTBbfhgwEBo=",
       "System.Text.Json.wasm": "sha256-3jebR0g3FuWZSshyHH67PtgZXWLxyKblIvLoD6qdjZs=",
-      "System.Text.RegularExpressions.wasm": "sha256-grOyOrbwJH1TgetM8krFP1aLT+V4FP1wTT0h41omyTs=",
+      "System.Text.RegularExpressions.wasm": "sha256-LaoFX8O6aOplSFkrToTtyEUmDq3ETghVu3zEENtMQsU=",
       "System.Threading.wasm": "sha256-zCHjAXT5lrB5QCkq7xcrsI3SJnq3lQE+PWB/QkWGmjw=",
       "System.wasm": "sha256-9DLmgOsnmEbjuZrRVFruRmVRvh/skjCDv6hQMjVZ3K8=",
       "System.Web.HttpUtility.wasm": "sha256-BZfpw8BWpiBMvSlCFQbZfFzBGmX5YkZnWHHVGnlcuTc=",
