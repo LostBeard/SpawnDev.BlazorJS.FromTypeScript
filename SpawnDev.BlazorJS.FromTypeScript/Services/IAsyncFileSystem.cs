@@ -27,6 +27,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
         Task<FileSystemHandle?> GetHandle(string path);
         Task<ASyncFSEntryInfo?> GetInfo(string path);
         Task<List<ASyncFSEntryInfo>> GetInfos(string path, bool recursive = false);
+        IAsyncEnumerable<ASyncFSEntryInfo> EnumerateInfos(string path, bool recursive = false);
         Task<ArrayBuffer> ReadArrayBuffer(string path);
         Task<byte[]> ReadBytes(string path);
         Task<JSObjects.File> ReadFile(string path);

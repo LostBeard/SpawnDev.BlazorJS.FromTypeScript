@@ -64,36 +64,47 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
         /// Returns the directory names in the specified path
         /// </summary>
         /// <returns></returns>
-        public async Task<List<ASyncFSEntryInfo>> GetInfos(string path, bool recursive = false)
+        public async IAsyncEnumerable<ASyncFSEntryInfo> EnumerateInfos(string path, bool recursive = false)
         {
-            var toScan = new List<string>();
-            var ret = new List<ASyncFSEntryInfo>();
-            var files = new List<ASyncFSEntryInfo>();
-            using var dir = await GetDirectoryHandle(path, false);
-            var values = await dir!.ValuesList();
-            foreach (var entry in values)
+            var toScan = new Queue<string>();
+            toScan.Enqueue(path);
+            while (toScan.Any())
             {
-                if (entry is FileSystemDirectoryHandle fileSystemDirectoryHandle)
+                path = toScan.Dequeue();
+                using var dir = await GetDirectoryHandle(path, false);
+                var values = await dir!.ValuesList();
+                foreach (var entry in values)
                 {
-                    ret.Add(new ASyncFSEntryInfo(true, entry.Name, path));
-                    if (recursive)
+                    if (entry is FileSystemDirectoryHandle fileSystemDirectoryHandle)
                     {
-                        toScan.Add(IOPath.Combine(path, entry.Name));
+                        var info = new ASyncFSEntryInfo(true, entry.Name, path);
+                        yield return info;
+                        if (recursive)
+                        {
+                            toScan.Enqueue(IOPath.Combine(path, entry.Name));
+                        }
+                    }
+                    else if (entry is FileSystemFileHandle fileSystemFileHandle)
+                    {
+                        using var file = await fileSystemFileHandle.GetFile();
+                        var info = new ASyncFSEntryInfo(false, entry.Name, path, file.LastModified, file.Size);
+                        yield return info;
                     }
                 }
-                else if (entry is FileSystemFileHandle fileSystemFileHandle)
-                {
-                    using var file = await fileSystemFileHandle.GetFile();
-                    ret.Add(new ASyncFSEntryInfo(false, entry.Name, path, file.LastModified, file.Size));
-                }
-                
             }
-            foreach(var g in toScan)
+        }
+        /// <summary>
+        /// Returns the directory names in the specified path
+        /// </summary>
+        /// <returns></returns>
+        public async Task<List<ASyncFSEntryInfo>> GetInfos(string path, bool recursive = false)
+        {
+            var ret = new List<ASyncFSEntryInfo>();
+            var infosAsyncEnum = EnumerateInfos(path, recursive);
+            await foreach(var info in infosAsyncEnum)
             {
-                var infos = await GetInfos(g, true);
-                ret.AddRange(infos);
+                ret.Add(info);
             }
-            values.ToArray().DisposeAll();
             return ret;
         }
         /// <summary>
