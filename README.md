@@ -3,4 +3,4 @@ A tool for creating SpawnDev.BlazorJS.JSObject interop libraires from TypeScript
 
 [FromTypeScript Web App](https://lostbeard.github.io/SpawnDev.BlazorJS.FromTypeScript/)
 
-![FromTypeScript](https://raw.githubusercontent.com/LostBeard/SpawnDev.BlazorJS.FromTypeScript/master/SpawnDev.BlazorJS.FromTypeScript.Demo/wwwroot/screenshots/FromTypeScript.jpg)
+![FromTypeScript](https://raw.githubusercontent.com/LostBeard/SpawnDev.BlazorJS.FromTypeScript/master/SpawnDev.BlazorJS.FromTypeScript/wwwroot/screenshots/FromTypeScript.jpg)
