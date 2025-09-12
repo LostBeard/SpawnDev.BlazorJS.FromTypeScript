@@ -2,7 +2,9 @@
 {
     public class ParsedEnum : Parsed
     {
+        public string CSEnumName => Name;
         public string Name { get; set; } = "";
         public List<ParsedEnumEntry> Values { get; set; } = new List<ParsedEnumEntry>();
+        public ParsedEnum() { }
     }
 }

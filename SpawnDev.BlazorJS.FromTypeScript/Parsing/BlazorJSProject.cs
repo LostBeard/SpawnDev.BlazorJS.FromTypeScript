@@ -86,7 +86,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                 foreach (var c in m.Interfaces)
                 {
                     var fileNameP = IOPath.Combine(OutPath, m.SubPath, $"{c.Name}.cs");
-                    var fileName = IOPath.GetFullPath(fileNameP);
+                    var fileName = IOPath.GetFullPath(fileNameP)!;
                     var code = $@"
 using System.Text;
 using SpawnDev.BlazorJS;
@@ -94,31 +94,21 @@ using SpawnDev.BlazorJS.JSObjects;
 
 namespace {m.ModuleNamespace}
 {{
-    public class {c.Name}{(c.Extends.Any() ? $" : {c.Extends.First()}" : " : JSObject")}
+    public class {c.CSClassName}{(c.Extends.Any() ? $" : {c.Extends.First()}" : " : JSObject")}
     {{
+        #region Constructors
         /// <inheritdoc/>
-        public {c.Name}(IJSInProcessObjectReference _ref) : base(_ref) {{ }}
-{string.Join("\r\n", c.Properties.Where(o => !IgnoreUnderscoreMembers || !o.Name.StartsWith("_")).OrderBy(o => o.Name).Select(m =>
-                    {
-                        if (m.IsStatic)
-                        {
-                            return $@"
-        /// <summary>
-        /// {m.SourceText?.Replace("\n", "\n        /// ")}
-        /// </summary>
-        public static {m.Type.Name} {m.Name.TitleCaseInvariant()} {{ get => JS.Get<{m.Type.Name}>(""{JSModuleNamespaced(m.Name)}"");{(!m.ShouldHaveSetter ? "" : $@" set => JS.Set(""{JSModuleNamespaced(m.Name)}"", value);")} }}";
-                        }
-                        else
-                        {
-                            return $@"
-        /// <summary>
-        /// {m.SourceText?.Replace("\n", "\n        /// ")}
-        /// </summary>
-        public {m.Type.Name} {m.Name.TitleCaseInvariant()} {{ get => JSRef!.Get<{m.Type.Name}>(""{m.Name}"");{(!m.ShouldHaveSetter ? "" : $@" set => JSRef!.Set(""{m.Name}"", value);")} }}";
-                        }
-                    }))}
+        public {c.CSClassName}(IJSInProcessObjectReference _ref) : base(_ref) {{ }}
+{string.Join("\r\n", c.Methods.Where(o => o.IsConstructor).OrderByDescending(o => o.IsConstructor).ThenBy(o => o.Name).Select(m => m.ToString("        ")))}
+        #endregion
 
-{string.Join("\r\n", c.Methods.Where(o => !IgnoreUnderscoreMembers || !o.Name.StartsWith("_")).OrderByDescending(o => o.IsConstructor).ThenBy(o => o.Name).Select(m => m.ToString("        ")))}
+        #region Properties
+{string.Join("\r\n", c.Properties.Where(o => !IgnoreUnderscoreMembers || !o.Name.StartsWith("_")).OrderBy(o => o.Name).Select(m =>  m.ToString("        ")))}
+        #endregion
+
+        #region Methods
+{string.Join("\r\n", c.Methods.Where(o => !o.IsConstructor && (!IgnoreUnderscoreMembers || !o.Name.StartsWith("_"))).OrderByDescending(o => o.IsConstructor).ThenBy(o => o.Name).Select(m => m.ToString("        ")))}
+        #endregion
     }}
 }}
 ";
@@ -127,9 +117,25 @@ namespace {m.ModuleNamespace}
                 foreach (var c in m.Enums)
                 {
                     var fileNameP = IOPath.Combine(OutPath, m.SubPath, $"{c.Name}.cs");
-                    var fileName = IOPath.GetFullPath(fileNameP);
+                    var fileName = IOPath.GetFullPath(fileNameP)!;
                     //var fileName = IOPath.GetFullPath(IOPath.Combine(m.DestDir, $"{c.Name}.cs"));
-                    await FS.Write(fileName, "//  TODO");
+                    var code = $@"
+using System.Text;
+using SpawnDev.BlazorJS;
+using SpawnDev.BlazorJS.JSObjects;
+
+namespace {m.ModuleNamespace}
+{{
+    /// <summary>
+    /// {c.SourceText?.Replace("\n", "\n    /// ")}
+    /// </summary>
+    public enum {c.CSEnumName}
+    {{
+        {string.Join("\n        ", c.Values.Select(o =>  $"{o.Name} = {o.Value},"))}
+    }}
+}}
+";
+                    await FS.Write(fileName, code);
                 }
                 if (m.TypeAliases.Any())
                 {

@@ -16,6 +16,31 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing.ParsedNodes
         {
 
         }
+        string GetMethodParamsAsCSharp(ParsedMethod parsedMethod)
+        {
+            var sb = new List<string>();
+            foreach (var p in parsedMethod.Parameters)
+            {
+                sb.Add($"{(p.IsParamsArray ? "params " : "")}{p.Type.Name} {ReplaceProtectedNames(p.Name)}");
+            }
+            return string.Join(", ", sb);
+        }
+        string ReplaceProtectedNames(string name)
+        {
+            return name switch
+            {
+                "event" => "ev",
+                "params" => "parameters",
+                _ => name
+            };
+        }
+        string GetMethodParamNames(ParsedMethod parsedMethod, string prepend = "")
+        {
+            var paramNames = parsedMethod.Parameters.Select(p => ReplaceProtectedNames(p.Name)).ToList();
+            var ret = string.Join(", ", paramNames);
+            return !string.IsNullOrEmpty(ret) ? $"{prepend}{ret}" : ret;
+
+        }
         public override string ToString()
         {
             return ToString(0);
@@ -23,22 +48,6 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing.ParsedNodes
         public string ToString(string indentation)
         {
             return ToString(indentation?.Length ?? 0);
-        }
-        string GetMethodParamsAsCSharp(ParsedMethod parsedMethod)
-        {
-            var sb = new List<string>();
-            foreach (var p in parsedMethod.Parameters)
-            {
-                sb.Add($"{(p.IsParamsArray ? "params " : "")}{p.Type.Name} {p.Name}");
-            }
-            return string.Join(", ", sb);
-        }
-        string GetMethodParamNames(ParsedMethod parsedMethod, string prepend = "")
-        {
-            var paramNames = parsedMethod.Parameters.Select(p => p.Name).ToList();
-            var ret = string.Join(", ", paramNames);
-            return !string.IsNullOrEmpty(ret) ? $"{prepend}{ret}" : ret;
-
         }
         public string ToString(int indentation)
         {
@@ -172,12 +181,12 @@ public {CSReturnType} {CSMethodName}({GetMethodParamsAsCSharp(this)})
         //{
         //    return string.IsNullOrEmpty(JSModuleNamespace) ? i : $"{JSModuleNamespace}.{i}";
         //}
-        bool ReturnsTask => IsAsync;
-        bool IsAsync => ReturnType?.IsPromise ?? false;
         string StaticKeyword => IsStatic ? "static " : "";
         string JSorJSRefDot => IsStatic ? "JS." : "JSRef!.";
         bool ReturnsVoid => CSReturnType == "void";
         bool ReturnsTaskVoid => CSReturnType == "Task";
+        bool ReturnsTask => IsAsync;
+        public bool IsAsync => ReturnType?.IsPromise ?? false;
         string CSMethodName
         {
             get
@@ -187,7 +196,7 @@ public {CSReturnType} {CSMethodName}({GetMethodParamsAsCSharp(this)})
             }
         }
         bool HasReturnType => !IsConstructor && !string.IsNullOrEmpty(ReturnType?.Name) && ReturnType.Name != "void";
-        string CSReturnType
+        public string CSReturnType
         {
             get
             {

@@ -6,7 +6,7 @@
         public bool IsClass { get; set; }
         public string ProjectPath { get; set; } = "";
         public string Name { get; set; } = "";
-        public string CSClassName => Name.TitleCaseInvariant();
+        public string CSClassName => Name;
         public List<string> Extends { get; set; }
         public List<string> TypeParameters { get; set; }
         //public List<ParsedConstructor> Constructors { get; set; } = new List<ParsedConstructor>();
