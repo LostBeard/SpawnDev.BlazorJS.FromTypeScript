@@ -253,7 +253,14 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
                 curDir = nextDir;
             }
             var fileName = pathParts.Last();
-            await curDir.RemoveEntry(fileName, recursive);
+            try
+            {
+                await curDir.RemoveEntry(fileName, recursive);
+            }
+            catch
+            {
+                // can throw if the entry does not exist, in which case we got what we wanted
+            }
             FileSystemChanged?.Invoke(this, new FileSystemChangeEventArgs(FileSystemChangeType.Deleted, path));
         }
         #endregion

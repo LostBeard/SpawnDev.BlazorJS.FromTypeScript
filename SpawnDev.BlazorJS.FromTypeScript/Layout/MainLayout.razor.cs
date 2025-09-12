@@ -2,12 +2,10 @@
 using Microsoft.AspNetCore.Components.Web;
 using Radzen;
 using Radzen.Blazor;
-using Sdcb.TypeScript.TsParser;
 using SpawnDev.BlazorJS.FromTypeScript.Components;
 using SpawnDev.BlazorJS.FromTypeScript.Layout.AppTray;
 using SpawnDev.BlazorJS.FromTypeScript.Parsing;
 using SpawnDev.BlazorJS.FromTypeScript.Services;
-using SpawnDev.BlazorJS.Toolbox;
 using SpawnDev.MatrixLEDDisplay.Demo.Services;
 using System.IO.Compression;
 using File = SpawnDev.BlazorJS.JSObjects.File;
@@ -46,7 +44,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
         [Inject]
         ThemeService ThemeService { get; set; } = default!;
 
-        bool _busy = false;
+        bool Busy => ProgressModalService.Visible;
         string Title => MainLayoutService.Title;
         bool leftSidebarExpanded = false;
         bool rightSidebarExpanded = false;
@@ -321,6 +319,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
         }
         async Task TreeItem_OnContextMenu(TreeItemContextMenuEventArgs args)
         {
+            if (Busy) return;
             if (args.Value is ASyncFSEntryInfo fsEntry)
             {
                 await ContextMenu(args, fsEntry);
@@ -399,9 +398,11 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
             catch { }
             if (files != null && files.Any())
             {
+                JS.Log("files.Any()");
                 var file = files[0];
                 using var zipArrayBuffer = await file.ArrayBuffer();
                 var zipBytes = zipArrayBuffer.ReadBytes();
+                JS.Log("zipBytes");
                 using var archive = new ZipArchive(new MemoryStream(zipBytes));
 
                 // find first *.d.ts file

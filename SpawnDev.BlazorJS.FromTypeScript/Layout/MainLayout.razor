@@ -15,7 +15,7 @@
                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0" JustifyContent="JustifyContent.Left">
                     <RadzenSidebarToggle Style="margin: 0 0.5rem 0 0;" Click="@(() => leftSidebarExpanded = !leftSidebarExpanded)" />
                     <RadzenMenu Responsive=false>
-                        <RadzenMenuItem Disabled="@_busy" Text="File">
+                        <RadzenMenuItem Disabled="@Busy" Text="File">
                             <RadzenMenuItem Click="ImportTypeScriptDeclarations" Icon="file_open" Text="Import *.d.ts Zip" />
                             <RadzenMenuItem Click="Reset" Icon="close" Text="Reset" />
                         </RadzenMenuItem>
