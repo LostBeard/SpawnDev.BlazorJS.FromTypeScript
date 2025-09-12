@@ -16,7 +16,7 @@ A tool for creating SpawnDev.BlazorJS.JSObject interop libraires from TypeScript
 - Wait (no progress indicator atm.)
 - Should see `Blazor` root folder and its sub-folder `Blazor.THREE` populate with the JSObject files. (May need to collapse, expand the tree view.)
 
-Currently a bit of a mess, but I'll clean it up and improve the output (and progress indicators.)
+Currently a WIP. Output needs improvement, code needs cleaning up, and TypeScript parsing needs modernizing.
 
 
 ![FromTypeScript](https://raw.githubusercontent.com/LostBeard/SpawnDev.BlazorJS.FromTypeScript/master/SpawnDev.BlazorJS.FromTypeScript/wwwroot/screenshots/FromTypeScript2.jpg)
