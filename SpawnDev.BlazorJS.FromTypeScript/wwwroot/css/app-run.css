@@ -1,0 +1,34 @@
+﻿:root {
+    --rz-tree-node-toggle-width: 1.2rem;
+}
+
+.rz-treenode-label {
+    background: none;
+}
+
+.tree-workspace-item {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    border: none;
+    background: none;
+    color: var(--rz-tree-node-selected-color);
+}
+
+li.rz-treenode {
+    padding-inline-start: 1rem;
+}
+
+.rz-treenode-content .rz-treenode-label {
+    padding-block: 0;
+    padding-inline: 0;
+}
+
+.rz-tabview-panel {
+    height: 100%;
+    padding: 0;
+}
+
+.monaco-editor-container, .razor-editor{
+    height: 100%;
+}

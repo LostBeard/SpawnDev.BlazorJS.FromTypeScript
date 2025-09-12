@@ -1,0 +1,63 @@
+﻿@using SpawnDev.BlazorJS.FromTypeScript.Parsing
+@implements IDisposable
+
+<div>
+    <ProjectSettings SaveClick="Save_Click" SaveText="Create" ShowCancel=true CancelClick="Cancel_Click" ErrorMessage="@errorMessage" Info="@Info" />
+</div>
+
+@code {
+    [Parameter]
+    public ProjectInfo Info { get; set; }
+
+    [Inject]
+    DialogService DialogService { get; set; } = default!;
+    string errorMessage = "";
+
+    bool beenInit = false;
+
+    protected override void OnInitialized()
+    {
+        if (!beenInit)
+        {
+            beenInit = true;
+
+        }
+    }
+    public void Dispose()
+    {
+        if (beenInit)
+        {
+            beenInit = false;
+
+        }
+    }
+    async Task Save_Click(ProjectInfo args)
+    {
+        if (string.IsNullOrWhiteSpace(args.ProjectName))
+        {
+            errorMessage = "Project name is required";
+            return;
+        }
+        DialogService.Close(args);
+    }
+    void Cancel_Click(ProjectInfo args)
+    {
+        DialogService.Close(null);
+    }
+    public static async Task<ProjectInfo?> Show(DialogService dialogService, ProjectInfo source)
+    {
+        ProjectInfo? restoreOptions = await dialogService.OpenAsync<NewProjectDialog>($"New Project", new Dictionary<string, object>
+        {
+            { "Info", source }
+        },
+        new DialogOptions()
+        {
+            Width = "auto",
+            CloseDialogOnEsc = true,
+            ShowClose = true,
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+        });
+        return restoreOptions;
+    }
+}

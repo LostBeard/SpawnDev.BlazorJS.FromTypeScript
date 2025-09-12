@@ -1,0 +1,92 @@
+﻿@using SpawnDev.BlazorJS.FromTypeScript.Parsing
+
+<div style="min-width: 500px;">
+    <RadzenStack>
+        <RadzenFieldset Text="Project">
+            <RadzenStack Gap="1rem">
+                <RadzenRow AlignItems="AlignItems.Stretch">
+                    <RadzenColumn Size="4">
+                        <RadzenLabel Text="Project Name" Component="ProjectName" />
+                    </RadzenColumn>
+                    <RadzenColumn Style="text-align: right;">
+                        <RadzenTextBox Disabled=@Disabled Name="ProjectName" Placeholder="Project Name" @bind-Value="@Info.ProjectName" />
+                    </RadzenColumn>
+                </RadzenRow>
+                <RadzenRow AlignItems="AlignItems.Stretch">
+                    <RadzenColumn Size="4">
+                        <RadzenLabel Text="JS Namespace" Component="JSNamespace" />
+                    </RadzenColumn>
+                    <RadzenColumn Style="text-align: right;">
+                        <RadzenTextBox Disabled=@Disabled Name="JSNamespace" Placeholder="THREE" @bind-Value="@Info.JSModuleNamespace" />
+                    </RadzenColumn>
+                </RadzenRow>
+                <RadzenRow AlignItems="AlignItems.Stretch">
+                    <RadzenColumn Size="4">
+                        <RadzenLabel Text="Namespace From Path" Component="NameSpaceFromPath" />
+                    </RadzenColumn>
+                    <RadzenColumn Style="text-align: right;">
+                        <RadzenSwitch Disabled=@Disabled Name="NameSpaceFromPath" @bind-Value="@Info.NameSpaceFromPath" />
+                    </RadzenColumn>
+                </RadzenRow>
+                <RadzenRow AlignItems="AlignItems.Stretch">
+                    <RadzenColumn Size="4">
+                        <RadzenLabel Text="Source" Component="Source" />
+                    </RadzenColumn>
+                    <RadzenColumn Style="text-align: right;">
+                        <RadzenTextBox Disabled=@Disabled ReadOnly="true" Name="Source" @bind-Value="@Info.Source" />
+                    </RadzenColumn>
+                </RadzenRow>
+                <RadzenRow AlignItems="AlignItems.Stretch">
+                    <RadzenColumn Size="12">
+                        <RadzenText Text="@ErrorMessage" Style="color: darkred;" />
+                    </RadzenColumn>
+                </RadzenRow>
+                <RadzenRow AlignItems="AlignItems.Stretch">
+                    <RadzenColumn Size="4">
+
+                    </RadzenColumn>
+                    <RadzenColumn Style="text-align: right;">
+                        <RadzenButton Disabled=@Disabled Visible=@ShowRun Icon="run" Text="Run" Variant="Variant.Outlined" Click="@(() => RunClick.InvokeAsync(Info))" />
+                        <RadzenButton Disabled=@Disabled Visible=@ShowSave Icon="save" Text="@SaveText" Variant="Variant.Outlined" Click="@(() => SaveClick.InvokeAsync(Info))" />
+                        <RadzenButton Disabled=@Disabled Visible=@ShowCancel Icon="save" Text="Cancel" Variant="Variant.Outlined" Click="@(() => CancelClick.InvokeAsync(Info))" />
+                    </RadzenColumn>
+                </RadzenRow>
+            </RadzenStack>
+        </RadzenFieldset>
+    </RadzenStack>
+</div>
+
+@code {
+    [Parameter]
+    public string ErrorMessage { get; set; } = "";
+
+    [Parameter]
+    public ProjectInfo Info { get; set; } = new ProjectInfo();
+
+    [Parameter]
+    public EventCallback<ProjectInfo> SaveClick { get; set; }
+
+    [Parameter]
+    public EventCallback<ProjectInfo> CancelClick { get; set; }
+
+    [Parameter]
+    public EventCallback<ProjectInfo> RunClick { get; set; }
+
+    [Parameter]
+    public bool ShowRun { get; set; }
+
+    [Parameter]
+    public bool ShowCancel { get; set; }
+
+    [Parameter]
+    public bool ShowSave { get; set; } = true;
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public string SaveText { get; set; } = "Save";
+
+    [Inject]
+    FileService FileService { get; set; }
+}

@@ -1,0 +1,113 @@
+﻿@using BlazorMonaco.Editor
+<div style="width: 100%; height: 100%;">
+    @if (beenInit && contentLoaded.Task.IsCompleted)
+    {
+        <StandaloneCodeEditor OnDidInit="@Editor_OnDidInit" CssClass="razor-editor" ConstructionOptions="GetOptions" />
+    }
+    else
+    {
+        <div>Loading Monaco Editor...</div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string FullPath { get; set; }
+
+    public StandaloneEditorConstructionOptions GetOptions(StandaloneCodeEditor editor)
+    {
+        var ret = new StandaloneEditorConstructionOptions
+        {
+            Value = contents,
+            AutomaticLayout = true,
+            Theme = "vs-dark",
+        };
+        Console.WriteLine($"GetOptions");
+        return ret;
+    }
+
+    string _FullPath = "";
+
+    string contents = "";
+    TaskCompletionSource tcs = new TaskCompletionSource();
+    /// <summary>
+    /// This task completes when the Editor instance has fired the OnDidInit event.<br/>
+    /// This task will not complete until the MonacoEditor is visible.<br/>
+    /// The Ready Task will fire when Editor is loaded even if the Monaco Editor is not visible<br/>
+    /// but may fire before or after this event.
+    /// </summary>
+    public Task DidInit => tcs.Task;
+    public void Editor_OnDidInit()
+    {
+        Console.WriteLine($"Editor_OnDidInit:");
+        tcs.TrySetResult();
+    }
+
+    [Inject]
+    ContextMenuService ContextMenuService { get; set; } = default!;
+    [Inject]
+    FileService FileService { get; set; } = default!;
+    [Inject]
+    AsyncFileSystem FS { get; set; } = default!;
+    [Inject]
+    BlazorJSRuntime JS { get; set; } = default!;
+    [Inject]
+    NotificationService NotificationService { get; set; } = default!;
+    [Inject]
+    DialogService DialogService { get; set; } = default!;
+    [Inject]
+    AppTrayService TrayIconService { get; set; } = default!;
+    [Inject]
+    NavigationManager NavigationManager { get; set; } = default!;
+    [Inject]
+    MainLayoutService MainLayoutService { get; set; } = default!;
+    [Inject]
+    ThemeService ThemeService { get; set; } = default!;
+
+    TaskCompletionSource contentLoaded = new TaskCompletionSource();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+        if (_FullPath == FullPath) return;
+        _FullPath = FullPath;
+        try
+        {
+            contents = await FS.ReadText(FullPath);
+            contentLoaded.SetResult();
+            StateHasChanged();
+        }
+        catch { }
+        if (Ready.IsCompleted)
+        {
+            StateHasChanged();
+        }
+    }
+    static Task? _Ready = null;
+    Task Ready => _Ready ??= InitAsync();
+    static bool beenInit = false;
+    async Task InitAsync()
+    {
+        try
+        {
+            if (JS.IsUndefined("monaco"))
+            {
+                await JS.LoadScript("./_content/BlazorMonaco/jsInterop.js");
+                await JS.LoadScript("./_content/BlazorMonaco/lib/monaco-editor/min/vs/loader.js");
+                await JS.LoadScript("./_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.js");
+                // may need to wait briefly for monaco to finish loading (single delay worked during dev)
+                while (JS.IsUndefined("monaco"))
+                {
+                    await Task.Delay(50);
+                }
+                await Task.Delay(50);
+            }
+            beenInit = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            JS?.LogError("CodeEditor.LoadScripts", ex.Message);
+        }
+    }
+}

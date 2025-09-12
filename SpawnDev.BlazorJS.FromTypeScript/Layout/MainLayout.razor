@@ -1,0 +1,157 @@
+﻿@inherits LayoutComponentBase
+
+<PageTitle>@Title</PageTitle>
+
+<HeadContent>
+    <RadzenThemeContainer Theme="material-dark" />
+    <link href="css/app-run.css" rel="stylesheet" />
+    <link href="SpawnDev.BlazorJS.FromTypeScript.styles.css" rel="stylesheet" />
+</HeadContent>
+<div>
+
+    <RadzenComponents />
+    <RadzenLayout Style="grid-template-columns: auto 1fr auto; grid-template-areas: 'rz-header rz-header rz-header' 'rz-sidebar rz-body rz-right-sidebar'">
+        <RadzenHeader>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0" JustifyContent="JustifyContent.SpaceBetween">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0" JustifyContent="JustifyContent.Left">
+                    <RadzenSidebarToggle Style="margin: 0 0.5rem 0 0;" Click="@(() => leftSidebarExpanded = !leftSidebarExpanded)" />
+                    <RadzenMenu Responsive=false>
+                        <RadzenMenuItem Disabled="@_busy" Text="File">
+                            <RadzenMenuItem Click="ImportTypeScriptDeclarations" Icon="file_open" Text="Import *.d.ts Zip" />
+                            <RadzenMenuItem Click="Reset" Icon="close" Text="Reset" />
+                        </RadzenMenuItem>
+                    </RadzenMenu>
+                </RadzenStack>
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0" JustifyContent="JustifyContent.Right">
+                    <AppTrayArea></AppTrayArea>
+                    <RadzenSidebarToggle Style="@($"margin: 0; {(rightSidebarEnabled ? "" : "display: none;")}")" Click="@(() => rightSidebarExpanded = !rightSidebarExpanded)" />
+                </RadzenStack>
+            </RadzenStack>
+        </RadzenHeader>
+        <RadzenSidebar @bind-Expanded="@leftSidebarExpanded" Responsive="true">
+            <RadzenPanelMenu Style="height: 100%; width: 100%;">
+                <RadzenTree Change="Tree_OnChange" @ref=tree ItemContextMenu="TreeItem_OnContextMenu" Data=@categories Expand=@OnExpand Style="height: 100%; width: 100%;">
+                    <RadzenTreeLevel Selected=@ShouldSelectThisNode Expanded=@ShouldExpandThisNode Text="@GetTextForNode" HasChildren="@HasChildren" Template="@RenderTreeItem" />
+                </RadzenTree>
+            </RadzenPanelMenu>
+        </RadzenSidebar>
+        <RadzenBody Style="width: auto; position: relative; padding: 0;">
+            <RadzenTabs Change="Tabs_OnChange" Style="height: 100%; width: 100%;" @ref="tabs" RenderMode="TabRenderMode.Client" @bind-SelectedIndex=@selectedIndex>
+                <Tabs>
+                    @foreach (var editorItem in OpenFiles)
+                    {
+                        var tabText = IOPath.GetFileName(editorItem);
+                        <RadzenTabsItem @key=@editorItem>
+                            <Template>
+                                <div style="display: flex; gap: 6px">
+                                    <span>@tabText</span>
+                                    <RadzenButton class="editor-close-tab-button" Variant="Variant.Outlined" Icon="close" @onclick:stopPropagation Click=@(() => CloseEntry(editorItem)) Size="ButtonSize.ExtraSmall" />
+                                </div>
+                            </Template>
+                            <ChildContent>
+                                <div style="height: 100%; width: 100%; font-weight: bold;">
+                                    <OpenFileView FullPath="@editorItem" />
+                                </div>
+                            </ChildContent>
+                        </RadzenTabsItem>
+                    }
+                </Tabs>
+            </RadzenTabs>
+        </RadzenBody>
+        <RadzenSidebar Responsive="false" @bind-Expanded="@rightSidebarExpanded" Style="grid-area: rz-right-sidebar">
+            <div class="rz-p-4">
+                <!-- Right Sidebar -->
+            </div>
+        </RadzenSidebar>
+    </RadzenLayout>
+
+</div>
+@code {
+
+    RadzenTree? tree = null;
+    List<ASyncFSEntryInfo> categories = new List<ASyncFSEntryInfo>
+    {
+        new ASyncFSEntryInfo(true, "", ""),
+    };// OpenWorkspaceItems.OrderByDescending(o => o.RootEntry.IsDirectory).ThenBy(o => o.RootEntry.Name).ToList();
+    private RenderFragment RenderTreeItem(RadzenTreeItem args) => builder =>
+    {
+        if (args.Value is ASyncFSEntryInfo fsEntry)
+        {
+            var i = 0;
+            var entryName = string.IsNullOrEmpty(fsEntry.Name) ? "- Root -" : fsEntry.Name;
+            bool isDirectory = fsEntry.IsDirectory;
+            var icon = isDirectory ? "folder" : "insert_drive_file";
+            builder.OpenElement(++i, "button"); // <button
+            builder.AddAttribute(++i, "class", "tree-workspace-item workspace-item");
+            builder.AddAttribute(++i, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, (mouseArgs) => TreeviewItemClick(mouseArgs, args)));
+            if (fsEntry.FullPath.Split('/').Length == 2 && isDirectory)
+            {
+                var baseFolder = fsEntry.FullPath.Split('/').First();
+                if (baseFolder == blazorProjectPath)
+                {
+                    builder.OpenComponent<RadzenImage>(++i);    // <RadzenImage
+                    builder.AddAttribute(++i, nameof(RadzenImage.Path), "blazor.png");
+                    builder.AddAttribute(++i, nameof(RadzenImage.Style), "width: 24px; height: 24px;");
+                    builder.CloseComponent();                   // </RadzenImage>
+                }
+                else if (baseFolder == typeScriptPath)
+                {
+                    builder.OpenComponent<RadzenImage>(++i);    // <RadzenImage
+                    builder.AddAttribute(++i, nameof(RadzenImage.Path), "ts-icon.png");
+                    builder.AddAttribute(++i, nameof(RadzenImage.Style), "width: 24px; height: 24px;");
+                    builder.CloseComponent();                   // </RadzenImage>
+                }
+                else
+                {
+                    builder.OpenComponent<RadzenIcon>(++i); // <RadzenIcon
+                    builder.AddAttribute(++i, nameof(RadzenIcon.Icon), isDirectory ? "folder" : "insert_drive_file");
+                    builder.CloseComponent();   // </RadzenIcon>
+                }
+            }
+            else
+            {
+                builder.OpenComponent<RadzenIcon>(++i); // <RadzenIcon
+                builder.AddAttribute(++i, nameof(RadzenIcon.Icon), isDirectory ? "folder" : "insert_drive_file");
+                builder.CloseComponent();   // </RadzenIcon>
+            }
+            builder.AddContent(++i, entryName);
+            builder.CloseElement();     // </button>
+        }
+        @* else if (args.Value is FSEntry fsEntry)
+        {
+            bool isDirectory = fsEntry.IsDirectory;
+            var entryName = string.IsNullOrEmpty(fsEntry.Name) ? "/" : fsEntry.Name;
+            builder.OpenElement(1, "button");
+            builder.AddAttribute(2, "class", "tree-workspace-item workspace-entry-item");
+            builder.AddAttribute(3, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, (mouseArgs) => TreeviewItemClick(mouseArgs, args)));
+            builder.OpenComponent<RadzenIcon>(4);
+            builder.AddAttribute(5, nameof(RadzenIcon.Icon), isDirectory ? "folder" : "insert_drive_file");
+            builder.CloseComponent();
+            builder.AddContent(6, entryName);
+            builder.CloseElement();
+        } *@
+        else
+        {
+            throw new NotImplementedException();
+        }
+    };
+    bool HasChildren(object args)
+    {
+        if (args is ASyncFSEntryInfo fsEntry) return fsEntry.IsDirectory;
+        return false;
+    }
+    string GetTextForNode(object data)
+    {
+        if (data is ASyncFSEntryInfo fsEntry)
+        {
+            var category = fsEntry;
+            bool isDirectory = category.IsDirectory;
+            return category.Name;
+        }
+        else
+        {
+            var nmt = true;
+        }
+        return "???";
+    }
+}
