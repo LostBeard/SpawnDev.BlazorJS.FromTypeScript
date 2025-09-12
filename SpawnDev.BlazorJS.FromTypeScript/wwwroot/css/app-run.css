@@ -1,5 +1,7 @@
 ﻿:root {
     --rz-tree-node-toggle-width: 1.2rem;
+    --rz-tabs-tab-text-transform: none;
+    --rz-tabs-tab-padding-block: 0.1rem;
 }
 
 .rz-treenode-label {
@@ -31,4 +33,8 @@ li.rz-treenode {
 
 .monaco-editor-container, .razor-editor{
     height: 100%;
+}
+
+.rz-tabview-nav .rz-button.rz-variant-outlined.rz-primary.rz-shade-default {
+    box-shadow: none;
 }

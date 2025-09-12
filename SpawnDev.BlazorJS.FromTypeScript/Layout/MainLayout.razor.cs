@@ -116,7 +116,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
         string? SelectedTypeScriptLibraryRootPath => GetLibraryRoot(SelectedFile?.FullPath);
         string? SelectedTypeScriptLibraryName => GetLibraryName(SelectedFile?.FullPath);
 
-        async Task CheckUnsavedChanges(EditorInstance editor)
+        async Task<bool> CheckUnsavedChanges(EditorInstance editor)
         {
             // TODO - compare editor to file version or use flag to determine  unsaved changes
             if (editor.UnsavedChanges)
@@ -129,17 +129,16 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                         OkButtonText = "Close without saving",
                         CancelButtonText = "Cancel"
                     });
-                if (resp != true)
-                {
-                    return;
-                }
+                return resp == true;
             }
+            return true;
         }
         async Task CloseEntry(string fileName)
         {
             var editor = OpenEditors.LastOrDefault(o => o.FullPath == fileName);
             if (editor == null || editor.Closed) return;
-            await CheckUnsavedChanges(editor);
+            var confirmed = await CheckUnsavedChanges(editor);
+            if (!confirmed) return;
             var i = Editors.IndexOf(editor);
             var openIndexes = OpenEditors.Select(o => Editors.IndexOf(o)).ToList();
             editor.Closed = true;
