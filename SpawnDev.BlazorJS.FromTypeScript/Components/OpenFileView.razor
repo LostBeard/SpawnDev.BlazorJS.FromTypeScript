@@ -14,6 +14,18 @@
     [Parameter]
     public string FullPath { get; set; }
 
+    string GetLanguage(string filename)
+    {
+        var ext = IOPath.GetExtension(filename);
+        return ext switch
+        {
+            ".cs" => "csharp",
+            ".ts" => "typescript",
+            ".js" => "javascript",
+            _ => ""
+        };
+    }
+
     public StandaloneEditorConstructionOptions GetOptions(StandaloneCodeEditor editor)
     {
         var ret = new StandaloneEditorConstructionOptions
@@ -21,6 +33,7 @@
             Value = contents,
             AutomaticLayout = true,
             Theme = "vs-dark",
+            Language = GetLanguage(FullPath),// "typescript",
         };
         Console.WriteLine($"GetOptions");
         return ret;
