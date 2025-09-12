@@ -11,7 +11,8 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
     {
         public static string TitleCaseInvariant(this string t)
         {
-            return t == null || t.Length == 1 ? t : string.Join(" ", t.Split(' ').Select(o => $"{o.Substring(0, 1).ToUpper()}{o.Substring(1)}"));
+            if (t == null) return null;
+            return t.Length == 1 ? t.ToUpperInvariant() : string.Join(" ", t.Split(' ').Select(o => $"{o.Substring(0, 1).ToUpper()}{o.Substring(1)}"));
         }
         public static IEnumerable<T> OfKind<T>(this Node _this)
         {
