@@ -7,6 +7,7 @@ using SpawnDev.BlazorJS.FromTypeScript.Layout.AppTray;
 using SpawnDev.BlazorJS.FromTypeScript.Parsing;
 using SpawnDev.BlazorJS.FromTypeScript.Services;
 using SpawnDev.BlazorJS.Toolbox;
+using SpawnDev.MatrixLEDDisplay.Demo.Services;
 using System.IO.Compression;
 using File = SpawnDev.BlazorJS.JSObjects.File;
 using Type = System.Type;
@@ -15,7 +16,11 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
 {
     public partial class MainLayout
     {
-
+        
+        [Inject]
+        FileIconService FileIconService { get; set; } = default!;
+        [Inject]
+        AssetManifestService AssetManifestService { get; set; } = default!;
         [Inject]
         ContextMenuService ContextMenuService { get; set; } = default!;
         [Inject]
@@ -54,7 +59,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
             FS.FileSystemChanged += FS_FileSystemChanged;
             if (_delayedReload == null)
             {
-                _delayedReload = new System.Timers.Timer(100);
+                _delayedReload = new System.Timers.Timer(500);
                 _delayedReload.Elapsed += _delayedReload_Elapsed;
                 _delayedReload.AutoReset = false;
             }
@@ -231,7 +236,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
             JS.Log("ContextMenu", f.FullPath);
             var options = new List<ContextMenuItem>();
             //
-            string? libraryRoot = f.FullPath.StartsWith($"{typeScriptPath}/") && f.FullPath.Split('/').Length >= 2 ? string.Join("/", f.FullPath.Split('/').Take(2)) : null;
+            string? libraryRoot = f.FullPath.StartsWith($"{FileIconService.typeScriptPath}/") && f.FullPath.Split('/').Length >= 2 ? string.Join("/", f.FullPath.Split('/').Take(2)) : null;
             string? libraryName = !string.IsNullOrEmpty(libraryRoot) ? libraryRoot.Split('/').Last() : null;
             if (!string.IsNullOrEmpty(libraryName))
             {
@@ -372,8 +377,6 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                 var nmt = true;
             }
         }
-        string typeScriptPath = "TypeScript";
-        string blazorProjectPath = "Blazor";
         async Task _ImportTypeScriptDeclarations()
         {
             File[]? files = null;
@@ -410,7 +413,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
 
                 var dirs = new List<string>();
                 //
-                var extractBasePath = $"{typeScriptPath}/{importAs}";
+                var extractBasePath = $"{FileIconService.typeScriptPath}/{importAs}";
 
                 await FS.Remove(extractBasePath, true);
                 await FS.CreateDirectory(extractBasePath);
@@ -481,7 +484,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
             JS.Log("_info", info);
             if (info != null && !string.IsNullOrEmpty(info.Source) && !string.IsNullOrEmpty(info.ProjectName))
             {
-                var projectFolder = $"{blazorProjectPath}/{info.ProjectName}";
+                var projectFolder = $"{FileIconService.blazorProjectPath}/{info.ProjectName}";
                 await FS.CreateDirectory(projectFolder);
 
                 var parser = new BlazorJSProject(FS, sourcePath, info.ProjectName, info.JSModuleNamespace, info.NameSpaceFromPath);

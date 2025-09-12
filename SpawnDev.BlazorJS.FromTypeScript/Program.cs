@@ -7,6 +7,7 @@ using SpawnDev.BlazorJS.FromTypeScript.Layout;
 using SpawnDev.BlazorJS.FromTypeScript.Layout.AppTray;
 using SpawnDev.BlazorJS.FromTypeScript.Services;
 using SpawnDev.BlazorJS.Toolbox;
+using SpawnDev.MatrixLEDDisplay.Demo.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.Services.AddBlazorJSRuntime(out var JS);
@@ -30,7 +31,9 @@ builder.Services.AddScoped<ThemeTrayIconService>();
 builder.Services.AddScoped<FileService>();
 builder.Services.AddScoped<GitHubService>();
 builder.Services.AddScoped<ProjectManager>();
-builder.Services.AddScoped<AsyncFileSystem>(); 
+builder.Services.AddScoped<AsyncFileSystem>();
+builder.Services.AddScoped<AssetManifestService>();
+builder.Services.AddScoped<FileIconService>(); 
 
 var host = await builder.Build().StartBackgroundServices();
 var fileService = host.Services.GetRequiredService<AsyncFileSystem>();

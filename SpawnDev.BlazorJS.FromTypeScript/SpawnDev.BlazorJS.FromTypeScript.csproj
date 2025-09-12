@@ -19,4 +19,17 @@
 	  <ProjectReference Include="..\Sdcb.TypeScriptAST\Sdcb.TypeScriptAST.csproj" />
 	</ItemGroup>
 
+	<!-- AssetManifestService -->
+	<!-- 
+		AssetManifestService will read the generated `service-worker-assets.js` at runtime so it can provide asset information to the app at runtime.
+		The service worker js files need to exist, but don't need to be registered or used. The asset manfiest generator will throw an error at build time without them.
+	-->
+	<PropertyGroup>
+		<ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
+	</PropertyGroup>
+	<ItemGroup>
+		<ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
+	</ItemGroup>
+	<!-- end AssetManifestService end -->
+
 </Project>
