@@ -398,11 +398,10 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
             catch { }
             if (files != null && files.Any())
             {
-                JS.Log("files.Any()");
+                pm.Text = "Looking for TypeScript declaration (*.d.ts) files...";
                 var file = files[0];
                 using var zipArrayBuffer = await file.ArrayBuffer();
                 var zipBytes = zipArrayBuffer.ReadBytes();
-                JS.Log("zipBytes");
                 using var archive = new ZipArchive(new MemoryStream(zipBytes));
 
                 // find first *.d.ts file
@@ -418,6 +417,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                     return;
                 }
 
+                pm.Text = "";
                 var importAs = await DialogService.ShowInputBox("Import as?");
                 if (string.IsNullOrWhiteSpace(importAs))
                 {
