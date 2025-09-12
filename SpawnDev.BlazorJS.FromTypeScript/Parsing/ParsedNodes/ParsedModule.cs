@@ -8,11 +8,11 @@
         public string ProjectNamespace { get; set; }
         public string ModuleNamespaceSub { get; set; }
         public string ModuleNamespace => $"{ProjectNamespace}.{ModuleNamespaceSub}".Trim('.');
-        public string ProjectPath { get; set; }
+        //public string ProjectPath { get; set; }
         //public string DestDir { get; set; } = "";
         //public string DestFile { get; set; } = "";
         public string SourceFile { get; set; } = "";
-        public string Name { get; set; } = "";
+        //public string Name { get; set; } = "";
         public string SubPath { get; set; } = "";
         public List<ParsedConstant> Constants { get; set; } = new List<ParsedConstant>();
         public List<ParsedInterfaceOrClass> Interfaces { get; set; } = new List<ParsedInterfaceOrClass>();

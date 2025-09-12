@@ -2,8 +2,6 @@
 using Sdcb.TypeScript.TsTypes;
 using SpawnDev.BlazorJS.FromTypeScript.Parsing.ParsedNodes;
 using SpawnDev.BlazorJS.FromTypeScript.Services;
-using System.Globalization;
-using System.Text;
 using System.Text.RegularExpressions;
 using Type = System.Type;
 
@@ -23,6 +21,8 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
         public string JSModuleNamespace { get; private set; } = "";
         public bool NameSpaceFromPath { get; private set; }
         IAsyncFileSystem FS;
+        public event Action OnProgress = default!;
+        public long TypeScriptDeclarationFileCount { get; private set; }
         public BlazorJSProject(IAsyncFileSystem fs, string srcPath, string projectName, string jsModuleNamespace, bool nameSpaceFromPath = false)
         {
             FS = fs;
@@ -39,14 +39,23 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
         public async Task ProcessDir()
         {
             Modules.Clear();
-            var files = FS.EnumerateInfos(SourcePath, true);
-            await foreach (var file in files)
+            var files = await FS.GetInfos(SourcePath, true);
+            var tsdFiles = files.Where(o => o.Name.EndsWith(".d.ts")).ToList();
+            TypeScriptDeclarationFileCount = tsdFiles.Count;
+            foreach (var file in tsdFiles)
             {
-                if (file.Name.EndsWith(".d.ts"))
-                {
-                    await ParseTypeScriptDefinationsFile(file.FullPath);
-                }
+                await ParseTypeScriptDefinationsFile(file.FullPath);
+                OnProgress?.Invoke();
             }
+            //var files = FS.EnumerateInfos(SourcePath, true);
+            //await foreach (var file in files)
+            //{
+            //    if (file.Name.EndsWith(".d.ts"))
+            //    {
+            //        await ParseTypeScriptDefinationsFile(file.FullPath);
+            //        OnProgress?.Invoke();
+            //    }
+            //}
         }
         string GetMethodParamsAsCSharp(ParsedMethod parsedMethod)
         {
@@ -65,11 +74,13 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
 
         }
         public bool IgnoreUnderscoreMembers = true;
-        public async Task WriteProject(string OutPath)
+        public async Task WriteProject(string OutPath, Action<int, int> progressCallback)
         {
             
             if (await FS.FileExists(OutPath)) throw new Exception($"{nameof(OutPath)} should be a directory. File was found.");
             if (!await FS.DirectoryExists(OutPath)) Directory.CreateDirectory(OutPath);
+            var total = Modules.Count;
+            var done = 0;
             foreach (var m in Modules.Values)
             {
                 foreach (var c in m.Interfaces)
@@ -203,6 +214,8 @@ namespace {m.ModuleNamespace}
                     // create a file for all type constants
 
                 }
+                done++;
+                progressCallback?.Invoke(total, done);
             }
         }
         bool UseTitleCaseNaming = true;
@@ -224,6 +237,7 @@ namespace {m.ModuleNamespace}
                 }
             }
             var subFilePath = Path.GetRelativePath(SourcePath, file);
+            if (Modules.ContainsKey(subFilePath)) return;
             var fileDir = IOPath.GetDirectoryName(file);
             var subPath = Path.GetRelativePath(SourcePath, fileDir);
             var delimiter = subPath.Contains("/") ? "/" : @"\";
@@ -232,9 +246,6 @@ namespace {m.ModuleNamespace}
                 var subPathap = subPath.Split(new[] { '/', '\\' }).Select(o => o.TitleCaseInvariant());
                 subPath = string.Join(delimiter, subPathap);
             }
-            //var destDir = string.IsNullOrEmpty(subPath) ? OutPath : IOPath.Combine(OutPath, subPath);
-            //if (!await FS.DirectoryExists(destDir)) Directory.CreateDirectory(destDir);
-            //var outFile = IOPath.Combine(destDir, fname);
             string? txt = null;
             try
             {
@@ -251,21 +262,20 @@ namespace {m.ModuleNamespace}
                 var nmtttt = true;
             }
             var typescriptString = PreProcess(txt);
-            if (Modules.ContainsKey(subFilePath)) return;
             var module = new ParsedModule
             {
-                Name = subFilePath,
+                //Name = subFilePath,
                 SubPath = subPath,
                 //DestDir = destDir,
                 //DestFile = outFile,
                 SourceFile = file,
-                ProjectPath = subFilePath,
+                //ProjectPath = subFilePath,
                 ProjectNamespace = ProjectName,
                 ModuleNamespaceSub = !NameSpaceFromPath ? "" : subPath.Replace("/", ".").Replace("\\", "."),
             };
             Modules.Add(subFilePath, module);
-
             await ParseTypeScriptDefinitions(module, typescriptString);
+            OnProgress?.Invoke();
             //await FS.Write(outFile, ret);
         }
         Regex replaceReadonly = new Regex(@"\breadonly ");

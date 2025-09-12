@@ -8,7 +8,6 @@
     <link href="SpawnDev.BlazorJS.FromTypeScript.styles.css" rel="stylesheet" />
 </HeadContent>
 <div>
-
     <RadzenComponents />
     <RadzenLayout Style="grid-template-columns: auto 1fr auto; grid-template-areas: 'rz-header rz-header rz-header' 'rz-sidebar rz-body rz-right-sidebar'">
         <RadzenHeader>
@@ -36,6 +35,7 @@
             </RadzenPanelMenu>
         </RadzenSidebar>
         <RadzenBody Style="width: auto; position: relative; padding: 0;">
+            <ProgressModal />
             <RadzenTabs Change="Tabs_OnChange" Style="height: 100%; width: 100%;" @ref="tabs" RenderMode="TabRenderMode.Client" @bind-SelectedIndex=@selectedIndex>
                 <Tabs>
                     @{

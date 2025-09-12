@@ -1,0 +1,29 @@
+﻿<div style="@(ProgressModalService.Visible ? "" : "display: none;")" class="progress-modal">
+    @foreach (var p in ProgressModalService.Sessions)
+    {
+        <div class="progress-modal-session">
+            <div class="progress-modal-session-text">
+                @p.Text
+            </div>
+            <div class="progress-modal-session-bar">
+                <RadzenProgressBar Min="@p.Min"
+                                   Max="@p.Max"
+                                   Unit="@p.Unit"
+                                   ProgressBarStyle="ProgressBarStyle.Base"
+                                   Value="@(p.Indeterminate ? p.Max : p.Value)"
+                                   ShowValue="@(!p.Indeterminate && p.ShowValue)"
+                                   Mode="@(p.Indeterminate ? ProgressBarMode.Indeterminate : ProgressBarMode.Determinate)" />
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Inject]
+    ProgressModalService ProgressModalService { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        ProgressModalService.OnChanged += StateHasChanged;
+    }
+}

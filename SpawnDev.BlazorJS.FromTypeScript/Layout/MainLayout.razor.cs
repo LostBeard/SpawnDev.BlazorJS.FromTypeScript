@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Components.Web;
 using Radzen;
 using Radzen.Blazor;
+using Sdcb.TypeScript.TsParser;
 using SpawnDev.BlazorJS.FromTypeScript.Components;
 using SpawnDev.BlazorJS.FromTypeScript.Layout.AppTray;
 using SpawnDev.BlazorJS.FromTypeScript.Parsing;
@@ -16,7 +17,10 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
 {
     public partial class MainLayout
     {
-        
+
+
+        [Inject]
+        ProgressModalService ProgressModalService { get; set; } = default!;
         [Inject]
         FileIconService FileIconService { get; set; } = default!;
         [Inject]
@@ -333,8 +337,15 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
         {
             if (args.Value is ASyncFSEntryInfo fsEntry)
             {
-                var data = fsEntry!.IsDirectory ? await FS.GetInfos(fsEntry.FullPath) : null;
-                args.Children.Data = data?.OrderByDescending(o => o.IsDirectory).ThenBy(o => o.Name).ToList();
+                if (fsEntry!.IsDirectory)
+                {
+                    try
+                    {
+                        var data = await FS.GetInfos(fsEntry.FullPath);
+                        args.Children.Data = data?.OrderByDescending(o => o.IsDirectory).ThenBy(o => o.Name).ToList();
+                    }
+                    catch { }
+                }
                 args.Children.TextProperty = nameof(ASyncFSEntryInfo.Name);
                 args.Children.HasChildren = (childEntry) =>
                 {
@@ -380,6 +391,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
         async Task _ImportTypeScriptDeclarations()
         {
             File[]? files = null;
+            using var pm = await ProgressModalService.NewSession("Importing...");
             try
             {
                 files = await FileService.ShowOpenFilePickerCompat(".zip,.rar,.7zip", false);
@@ -396,7 +408,9 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                 var typeFiles = archive.Entries.Where(o => o.Name.EndsWith(".d.ts")).ToList();
                 typeFiles = typeFiles.OrderBy(o => o.FullName.Split('/').Length).ToList();
                 var firstEntry = typeFiles.FirstOrDefault(o => o.Name == "index.d.ts") ?? typeFiles.FirstOrDefault();
-
+                pm.Max = typeFiles.Count;
+                var tsDone = 0;
+                pm.Value = tsDone;
                 if (firstEntry == null)
                 {
                     NotificationService.Notify(NotificationSeverity.Error, "No *.d.ts files found");
@@ -445,6 +459,12 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                     }
                     else
                     {
+                        if (entry.Name.EndsWith(".d.ts"))
+                        {
+                            tsDone += 1;
+                            pm.Text = entry.Name;
+                            pm.Value = tsDone;
+                        }
                         var parentPath = IOPath.GetDirectoryName(entryDestinationPath);
                         if (!string.IsNullOrEmpty(parentPath))
                         {
@@ -487,17 +507,38 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                 var projectFolder = $"{FileIconService.blazorProjectPath}/{info.ProjectName}";
                 await FS.CreateDirectory(projectFolder);
 
+                using var pm = await ProgressModalService.NewSession("Creating project...");
                 var parser = new BlazorJSProject(FS, sourcePath, info.ProjectName, info.JSModuleNamespace, info.NameSpaceFromPath);
+                var writing = false;
+                void Parser_OnProgress()
+                {
+                    if (parser.TypeScriptDeclarationFileCount > 0)
+                    {
+                        pm.Text = $"Reading typescript... Classes: {parser.Interfaces.Count} Enums: {parser.Enums.Count} Constants: {parser.Constants.Count}";
+                        pm.Max = parser.TypeScriptDeclarationFileCount;
+                        pm.Value = parser.Modules.Count;
+                    }
+                }
+                parser.OnProgress += Parser_OnProgress;
                 try
                 {
+                    pm.Text = "Reading typescript...";
                     await parser.ProcessDir();
-                    await parser.WriteProject(projectFolder);
+                    writing = true;
+                    pm.Text = "Building bindings...";
+                    await parser.WriteProject(projectFolder, (total, done) =>
+                    {
+                        pm.Text = $"Building bindings... Classes: {parser.Interfaces.Count} Enums: {parser.Enums.Count} Constants: {parser.Constants.Count}";
+                        pm.Max = total;
+                        pm.Value = done;
+                    });
                 }
                 catch (Exception ex)
                 {
                     JS.Log(ex.ToString());
                     var nmt = true;
                 }
+                parser.OnProgress -= Parser_OnProgress;
             }
             StateHasChanged();
         }
