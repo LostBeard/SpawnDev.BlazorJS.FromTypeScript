@@ -399,6 +399,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
             if (files != null && files.Any())
             {
                 pm.Text = "Looking for TypeScript declaration (*.d.ts) files...";
+                await pm.DelayForUIUpdate();
                 var file = files[0];
                 using var zipArrayBuffer = await file.ArrayBuffer();
                 var zipBytes = zipArrayBuffer.ReadBytes();

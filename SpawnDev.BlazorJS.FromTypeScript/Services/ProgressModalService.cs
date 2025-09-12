@@ -127,6 +127,7 @@
                 StateHasChanged();
             }
             ~ProgressSession() => Dispose(false);
+            public Task DelayForUIUpdate() => Task.Delay(50);
         }
     }
 
