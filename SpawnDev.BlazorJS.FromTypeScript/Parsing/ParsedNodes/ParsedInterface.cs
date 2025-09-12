@@ -9,8 +9,10 @@
         public List<string> Extends { get; set; }
         public List<string> TypeParameters { get; set; }
         //public List<ParsedConstructor> Constructors { get; set; } = new List<ParsedConstructor>();
+        public string JSModuleNamespace { get; set; }
         public List<ParsedConstant> Constants { get; set; } = new List<ParsedConstant>();
         public List<ParsedProperty> Properties { get; set; } = new List<ParsedProperty>();
         public List<ParsedMethod> Methods { get; set; } = new List<ParsedMethod>();
+        public ParsedInterfaceOrClass() { }
     }
 }

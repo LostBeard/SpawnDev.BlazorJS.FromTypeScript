@@ -106,7 +106,7 @@ namespace {m.ModuleNamespace}
         /// <summary>
         /// {m.SourceText?.Replace("\n", "\n        /// ")}
         /// </summary>
-        public static {m.Type.Name} {m.Name.TitleCaseInvariant()} {{ get => JS.Get<{m.Type.Name}>(""{JSModuleNamespaced(m.Name)}"");{(!m.ShouldHaveSetter ? "" : $@"set => JS.Set(""{JSModuleNamespaced(m.Name)}"", value);")} }}";
+        public static {m.Type.Name} {m.Name.TitleCaseInvariant()} {{ get => JS.Get<{m.Type.Name}>(""{JSModuleNamespaced(m.Name)}"");{(!m.ShouldHaveSetter ? "" : $@" set => JS.Set(""{JSModuleNamespaced(m.Name)}"", value);")} }}";
                         }
                         else
                         {
@@ -118,71 +118,7 @@ namespace {m.ModuleNamespace}
                         }
                     }))}
 
-{string.Join("\r\n", c.Methods.Where(o => !IgnoreUnderscoreMembers || !o.Name.StartsWith("_")).OrderByDescending(o => o.IsConstructor).ThenBy(o => o.Name).Select(m =>
-                    {
-                        if (m.IsConstructor)
-                        {
-                            return $@"
-        /// <summary>
-        /// {m.SourceText?.Replace("\n", "\n        /// ")}
-        /// </summary>
-        public {c.Name}({GetMethodParamsAsCSharp(m)}) => base(JS.New(""{JSModuleNamespaced(c.Name)}""{GetMethodParamNames(m, ", ")}));
-";
-                        }
-                        if (m.IsStatic)
-                        {
-                            if (string.IsNullOrEmpty(m.ReturnType?.Name) || m.ReturnType?.Name == "void")
-                            {
-                                return $@"
-        /// <summary>
-        /// {m.SourceText?.Replace("\n", "\n        /// ")}
-        /// </summary>
-        public static void {m.Name.TitleCaseInvariant()}({GetMethodParamsAsCSharp(m)})
-        {{
-            JS.CallVoid(""{m.Name}""{GetMethodParamNames(m, ", ")});
-        }}
-";
-                            }
-                            else
-                            {
-                                return $@"
-        /// <summary>
-        /// {m.SourceText?.Replace("\n", "\n        /// ")}
-        /// </summary>
-        public static {(string.IsNullOrEmpty(m.ReturnType?.Name) ? "void" : m.ReturnType.Name)} {m.Name.TitleCaseInvariant()}({GetMethodParamsAsCSharp(m)})
-        {{{(m.ReturnType!.Name == "this" ? $@"
-            JS.CallVoid(""{m.Name}""{GetMethodParamNames(m, ", ")});
-            return this;" : $@"
-            return JS.Call<{m.ReturnType.Name}>(""{JSModuleNamespaced(m.Name)}""{GetMethodParamNames(m, ", ")});")}
-        }}
-";
-                            }
-                        }
-                        if (string.IsNullOrEmpty(m.ReturnType?.Name) || m.ReturnType?.Name == "void")
-                        {
-                            return $@"
-        /// <summary>
-        /// {m.SourceText?.Replace("\n", "\n        /// ")}
-        /// </summary>
-        public void {m.Name.TitleCaseInvariant()}({GetMethodParamsAsCSharp(m)})
-        {{
-            JSRef!.CallVoid(""{m.Name}""{GetMethodParamNames(m, ", ")});
-        }}";
-                        }
-                        else
-                        {
-                            return $@"
-        /// <summary>
-        /// {m.SourceText?.Replace("\n", "\n        /// ")}
-        /// </summary>
-        public {(m.ReturnType!.Name == "this" ? c.Name : m.ReturnType.Name)} {m.Name.TitleCaseInvariant()}({GetMethodParamsAsCSharp(m)})
-        {{{(m.ReturnType == null || m.ReturnType.Name == "this" ? $@"
-            JSRef!.CallVoid(""{m.Name}""{GetMethodParamNames(m, ", ")});
-            return this;" : $@"
-            return JSRef!.Call<{m.ReturnType.Name}>(""{m.Name}""{GetMethodParamNames(m, ", ")});")}
-        }}";
-                        }
-                    }))}
+{string.Join("\r\n", c.Methods.Where(o => !IgnoreUnderscoreMembers || !o.Name.StartsWith("_")).OrderByDescending(o => o.IsConstructor).ThenBy(o => o.Name).Select(m => m.ToString("        ")))}
     }}
 }}
 ";
@@ -336,7 +272,7 @@ namespace {m.ModuleNamespace}
             else if (child is InterfaceDeclaration interfaceDeclaration)
             {
                 var nmt = true;
-                var interfaceStr = interfaceDeclaration.ToCSharpInterface();
+                var interfaceStr = interfaceDeclaration.ParseInterfaceOrClass(JSModuleNamespace);
                 sourceFile.Interfaces.Add(interfaceStr);
                 //sb.AppendLine(interfaceStr);
                 var nmt2 = true;
@@ -344,7 +280,7 @@ namespace {m.ModuleNamespace}
             else if (child is ClassDeclaration classDeclaration)
             {
                 var nmt = true;
-                var interfaceStr = classDeclaration.ToCSharpInterface();
+                var interfaceStr = classDeclaration.ParseInterfaceOrClass(JSModuleNamespace);
                 sourceFile.Interfaces.Add(interfaceStr);
                 //sb.AppendLine(interfaceStr);
                 var nmt2 = true;

@@ -6,6 +6,7 @@ using SpawnDev.BlazorJS.FromTypeScript;
 using SpawnDev.BlazorJS.FromTypeScript.Layout;
 using SpawnDev.BlazorJS.FromTypeScript.Layout.AppTray;
 using SpawnDev.BlazorJS.FromTypeScript.Services;
+using SpawnDev.BlazorJS.JSObjects;
 using SpawnDev.BlazorJS.Toolbox;
 using SpawnDev.MatrixLEDDisplay.Demo.Services;
 
@@ -51,6 +52,9 @@ var fileService = host.Services.GetRequiredService<AsyncFileSystem>();
 //await fs.Write("settings.json", "Woohoo 1!");
 
 //var rb = await fs.ReadText("settings.json");
+
+//var w = JS.Get<Window>("");
+//w.JSRef!.CallVoidAsync()
 
 //var rbinfo1 = await fs.GetInfo("settings.json");
 //var rbinfo2 = await fs.GetInfo("settingb.json");

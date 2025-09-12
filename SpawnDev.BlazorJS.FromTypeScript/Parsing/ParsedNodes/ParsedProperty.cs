@@ -2,6 +2,7 @@
 {
     public class ParsedProperty : Parsed
     {
+        public ParsedInterfaceOrClass Parent { get; set; }
         public bool IsNullable { get; set; }
         public bool IsStatic { get; set; }
         public bool IsOverride { get; set; }
@@ -11,5 +12,6 @@
         public bool ReadOnly { get; set; }
         public bool ShouldHaveSetter => HasSet || (!HasGet && !ReadOnly);
         public ParsedType Type { get; set; }
+        public ParsedProperty() { }
     }
 }
