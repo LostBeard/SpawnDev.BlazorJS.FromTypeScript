@@ -116,14 +116,54 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
         string? SelectedTypeScriptLibraryRootPath => GetLibraryRoot(SelectedFile?.FullPath);
         string? SelectedTypeScriptLibraryName => GetLibraryName(SelectedFile?.FullPath);
 
-        void CloseEntry(string fileName)
+        async Task CheckUnsavedChanges(EditorInstance editor)
         {
-            var i = OpenFiles.IndexOf(fileName);
-            if (i == -1) return;
-            OpenFiles.Remove(fileName);
-            if (i >= OpenFiles.Count)
+            // TODO - compare editor to file version or use flag to determine  unsaved changes
+            if (editor.UnsavedChanges)
             {
-                selectedIndex = OpenFiles.Count - 1;
+                // TODO - change this to question asking if they want to save before closing with options - Yes, No, Cancel
+                var resp = await DialogService.Confirm($"{IOPath.GetFilename(editor.FullPath)} has unsaved changes. Are you sure you want to close it?", "Unsaved changes",
+                    new ConfirmOptions
+                    {
+                        CloseDialogOnEsc = true,
+                        OkButtonText = "Close without saving",
+                        CancelButtonText = "Cancel"
+                    });
+                if (resp != true)
+                {
+                    return;
+                }
+            }
+        }
+        async Task CloseEntry(string fileName)
+        {
+            var editor = OpenEditors.LastOrDefault(o => o.FullPath == fileName);
+            if (editor == null || editor.Closed) return;
+            await CheckUnsavedChanges(editor);
+            var i = Editors.IndexOf(editor);
+            var openIndexes = OpenEditors.Select(o => Editors.IndexOf(o)).ToList();
+            editor.Closed = true;
+            if (selectedIndex == i)
+            {
+                if (openIndexes.Count == 1)
+                {
+                    // nothing to do. no other open editors to set
+                    selectedIndex = 0;
+                }
+                else
+                {
+                    var n = openIndexes.IndexOf(i);
+                    if (n == openIndexes.Count - 1)
+                    {
+                        // non-closed before
+                        selectedIndex = openIndexes[n - 1];
+                    }
+                    else if (n < openIndexes.Count - 1)
+                    {
+                        // non-closed after
+                        selectedIndex = openIndexes[n + 1];
+                    }
+                }
             }
             StateHasChanged();
         }
@@ -147,17 +187,22 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
             JS.Log("SelectedTypeScriptLibraryName", SelectedTypeScriptLibraryName);
             if (!changed) return;
             if (f == null) return;
-            //  ....
-            if (!f.IsDirectory && !OpenFiles.Contains(f.FullPath))
+
+            if (!f.IsDirectory)
             {
-                OpenFiles.Add(f.FullPath);
+                OpenPath(f.FullPath);
             }
-            var index = OpenFiles.IndexOf(f.FullPath);
-            if (index > -1)
-            {
-                await RenderTick();
-                selectedIndex = index;
-            }
+            ////  ....
+            //if (!f.IsDirectory && !OpenFiles.Contains(f.FullPath))
+            //{
+            //    OpenFiles.Add(f.FullPath);
+            //}
+            //var index = OpenFiles.IndexOf(f.FullPath);
+            //if (index > -1)
+            //{
+            //    await RenderTick();
+            //    selectedIndex = index;
+            //}
             StateHasChanged();
         }
         async Task Tabs_OnChange(int index)
@@ -166,7 +211,21 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
         }
         RadzenTabs? tabs;
         int selectedIndex = 0;
-        List<string> OpenFiles = new List<string>();
+        //List<string> OpenFiles = new List<string>();
+        List<EditorInstance> Editors = new List<EditorInstance>();
+        List<EditorInstance> OpenEditors => Editors.Where(o => !o.Closed).ToList();
+
+        void OpenPath(string fullPath)
+        {
+            var openEditor = OpenEditors.FirstOrDefault(o => o.FullPath == fullPath);
+            if (openEditor == null)
+            {
+                openEditor = new EditorInstance(fullPath);
+                Editors.Add(openEditor);
+            }
+            selectedIndex = Editors.IndexOf(openEditor);
+            StateHasChanged();
+        }
         async Task ContextMenu(MouseEventArgs args, ASyncFSEntryInfo f)
         {
             if (f == null) return;
@@ -426,11 +485,11 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                 var projectFolder = $"{blazorProjectPath}/{info.ProjectName}";
                 await FS.CreateDirectory(projectFolder);
 
-                var parser = new BlazorJSProject(FS, sourcePath, projectFolder, info.ProjectName, info.JSModuleNamespace, info.NameSpaceFromPath);
+                var parser = new BlazorJSProject(FS, sourcePath, info.ProjectName, info.JSModuleNamespace, info.NameSpaceFromPath);
                 try
                 {
                     await parser.ProcessDir();
-                    await parser.WriteProject();
+                    await parser.WriteProject(projectFolder);
                 }
                 catch (Exception ex)
                 {

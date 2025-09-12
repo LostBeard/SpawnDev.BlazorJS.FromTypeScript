@@ -13,7 +13,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
     {
         List<Type> UnhandledTypes = new List<System.Type>();
         public string SourcePath { get; private set; }
-        public string OutPath { get; private set; }
+        //public string OutPath { get; private set; }
         public Dictionary<string, ParsedModule> Modules { get; } = new Dictionary<string, ParsedModule>();
         public List<ParsedConstant> Constants => Modules.SelectMany(o => o.Value.Constants).ToList();
         public List<ParsedInterfaceOrClass> Interfaces => Modules.SelectMany(o => o.Value.Interfaces).ToList();
@@ -23,12 +23,12 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
         public string JSModuleNamespace { get; private set; } = "";
         public bool NameSpaceFromPath { get; private set; }
         IAsyncFileSystem FS;
-        public BlazorJSProject(IAsyncFileSystem fs, string srcPath, string outPath, string projectName, string jsModuleNamespace, bool nameSpaceFromPath = false)
+        public BlazorJSProject(IAsyncFileSystem fs, string srcPath, string projectName, string jsModuleNamespace, bool nameSpaceFromPath = false)
         {
             FS = fs;
             ProjectName = projectName;
             SourcePath = srcPath;
-            OutPath = outPath;
+            //OutPath = outPath;
             NameSpaceFromPath = nameSpaceFromPath;
             JSModuleNamespace = jsModuleNamespace;
         }
@@ -65,15 +65,17 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
 
         }
         public bool IgnoreUnderscoreMembers = true;
-        public async Task WriteProject()
+        public async Task WriteProject(string OutPath)
         {
+            
             if (await FS.FileExists(OutPath)) throw new Exception($"{nameof(OutPath)} should be a directory. File was found.");
             if (!await FS.DirectoryExists(OutPath)) Directory.CreateDirectory(OutPath);
             foreach (var m in Modules.Values)
             {
                 foreach (var c in m.Interfaces)
                 {
-                    var fileName = IOPath.GetFullPath(IOPath.Combine(m.DestDir, $"{c.Name}.cs"));
+                    var fileNameP = IOPath.Combine(OutPath, m.SubPath, $"{c.Name}.cs");
+                    var fileName = IOPath.GetFullPath(fileNameP);
                     var code = $@"
 using System.Text;
 using SpawnDev.BlazorJS;
@@ -186,7 +188,9 @@ namespace {m.ModuleNamespace}
                 }
                 foreach (var c in m.Enums)
                 {
-                    var fileName = IOPath.GetFullPath(IOPath.Combine(m.DestDir, $"{c.Name}.cs"));
+                    var fileNameP = IOPath.Combine(OutPath, m.SubPath, $"{c.Name}.cs");
+                    var fileName = IOPath.GetFullPath(fileNameP);
+                    //var fileName = IOPath.GetFullPath(IOPath.Combine(m.DestDir, $"{c.Name}.cs"));
                     await FS.Write(fileName, "//  TODO");
                 }
                 if (m.TypeAliases.Any())
@@ -228,9 +232,9 @@ namespace {m.ModuleNamespace}
                 var subPathap = subPath.Split(new[] { '/', '\\' }).Select(o => o.TitleCaseInvariant());
                 subPath = string.Join(delimiter, subPathap);
             }
-            var destDir = string.IsNullOrEmpty(subPath) ? OutPath : IOPath.Combine(OutPath, subPath);
+            //var destDir = string.IsNullOrEmpty(subPath) ? OutPath : IOPath.Combine(OutPath, subPath);
             //if (!await FS.DirectoryExists(destDir)) Directory.CreateDirectory(destDir);
-            var outFile = IOPath.Combine(destDir, fname);
+            //var outFile = IOPath.Combine(destDir, fname);
             string? txt = null;
             try
             {
@@ -251,8 +255,9 @@ namespace {m.ModuleNamespace}
             var module = new ParsedModule
             {
                 Name = subFilePath,
-                DestDir = destDir,
-                DestFile = outFile,
+                SubPath = subPath,
+                //DestDir = destDir,
+                //DestFile = outFile,
                 SourceFile = file,
                 ProjectPath = subFilePath,
                 ProjectNamespace = ProjectName,

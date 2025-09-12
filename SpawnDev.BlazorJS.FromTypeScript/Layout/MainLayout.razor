@@ -38,19 +38,32 @@
         <RadzenBody Style="width: auto; position: relative; padding: 0;">
             <RadzenTabs Change="Tabs_OnChange" Style="height: 100%; width: 100%;" @ref="tabs" RenderMode="TabRenderMode.Client" @bind-SelectedIndex=@selectedIndex>
                 <Tabs>
-                    @foreach (var editorItem in OpenFiles)
+                    @{
+                        while (Editors.Count > 0 && Editors.Last().Closed)
+                        {
+                            Console.WriteLine("Removing closed editor");
+                            Editors.RemoveAt(Editors.Count - 1);
+                        }
+                    }
+                    @foreach (var editorItem in Editors)
                     {
-                        var tabText = IOPath.GetFileName(editorItem);
-                        <RadzenTabsItem @key=@editorItem>
+                        var tabText = editorItem.TabText;
+                        var fullPath = editorItem.FullPath;
+                        var style = "";
+                        if (editorItem.Closed)
+                        {
+                            style += "display: none;";
+                        }
+                        <RadzenTabsItem @key=@fullPath Style="@style">
                             <Template>
                                 <div style="display: flex; gap: 6px">
                                     <span>@tabText</span>
-                                    <RadzenButton class="editor-close-tab-button" Variant="Variant.Outlined" Icon="close" @onclick:stopPropagation Click=@(() => CloseEntry(editorItem)) Size="ButtonSize.ExtraSmall" />
+                                    <RadzenButton class="editor-close-tab-button" Variant="Variant.Outlined" Icon="close" @onclick:stopPropagation Click=@(() => CloseEntry(fullPath)) Size="ButtonSize.ExtraSmall" />
                                 </div>
                             </Template>
                             <ChildContent>
                                 <div style="height: 100%; width: 100%; font-weight: bold;">
-                                    <OpenFileView FullPath="@editorItem" />
+                                    <OpenFileView FullPath="@fullPath" />
                                 </div>
                             </ChildContent>
                         </RadzenTabsItem>
