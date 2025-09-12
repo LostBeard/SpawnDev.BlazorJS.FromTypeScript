@@ -12,7 +12,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
         public static string TitleCaseInvariant(this string t)
         {
             if (t == null) return null;
-            return t.Length == 1 ? t.ToUpperInvariant() : string.Join(" ", t.Split(' ').Select(o => $"{o.Substring(0, 1).ToUpper()}{o.Substring(1)}"));
+            return t.Length <= 1 ? t.ToUpperInvariant() : string.Join(" ", t.Split(' ').Select(o => $"{o.Substring(0, 1).ToUpper()}{o.Substring(1)}"));
         }
         public static IEnumerable<T> OfKind<T>(this Node _this)
         {
@@ -236,11 +236,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
             var m = new ParsedMethod();
             m.IsConstructor = isConstructor;
             m.SourceText = child.GetText();
-            m.Name = child.IdentifierStr;
-            if (string.IsNullOrEmpty(child.IdentifierStr))
-            {
-                return null;
-            }
+            m.Name = child.IdentifierStr ?? "";
             if (!isConstructor)
             {
                 var returnType = GetTypeString(child.Children.Last());// child.Children.Last().GetText();

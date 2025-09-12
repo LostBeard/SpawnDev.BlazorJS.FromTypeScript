@@ -104,25 +104,17 @@ namespace {m.ModuleNamespace}
                         {
                             return $@"
         /// <summary>
-        /// {m.SourceText}
+        /// {m.SourceText?.Replace("\n", "\n        /// ")}
         /// </summary>
-        public static {m.Type.Name} {m.Name.TitleCaseInvariant()} 
-        {{
-            get => JS.Get<{m.Type.Name}>(""{JSModuleNamespaced(m.Name)}"");{(!m.ShouldHaveSetter ? "" : $@"
-            set => JS.Set(""{JSModuleNamespaced(m.Name)}"", value);")}
-        }}";
+        public static {m.Type.Name} {m.Name.TitleCaseInvariant()} {{ get => JS.Get<{m.Type.Name}>(""{JSModuleNamespaced(m.Name)}"");{(!m.ShouldHaveSetter ? "" : $@"set => JS.Set(""{JSModuleNamespaced(m.Name)}"", value);")} }}";
                         }
                         else
                         {
                             return $@"
         /// <summary>
-        /// {m.SourceText}
+        /// {m.SourceText?.Replace("\n", "\n        /// ")}
         /// </summary>
-        public {m.Type.Name} {m.Name.TitleCaseInvariant()} 
-        {{
-            get => JSRef!.Get<{m.Type.Name}>(""{m.Name}"");{(!m.ShouldHaveSetter ? "" : $@"
-            set => JSRef!.Set(""{m.Name}"", value);")}
-        }}";
+        public {m.Type.Name} {m.Name.TitleCaseInvariant()} {{ get => JSRef!.Get<{m.Type.Name}>(""{m.Name}"");{(!m.ShouldHaveSetter ? "" : $@" set => JSRef!.Set(""{m.Name}"", value);")} }}";
                         }
                     }))}
 
@@ -134,8 +126,7 @@ namespace {m.ModuleNamespace}
         /// <summary>
         /// {m.SourceText?.Replace("\n", "\n        /// ")}
         /// </summary>
-        public {c.Name}({GetMethodParamsAsCSharp(m)}) 
-            => base(JS.New(""{JSModuleNamespaced(c.Name)}""{GetMethodParamNames(m, ", ")}));
+        public {c.Name}({GetMethodParamsAsCSharp(m)}) => base(JS.New(""{JSModuleNamespaced(c.Name)}""{GetMethodParamNames(m, ", ")}));
 ";
                         }
                         if (m.IsStatic)
@@ -288,13 +279,12 @@ namespace {m.ModuleNamespace}
         List<string> Processing = new List<string>();
         async Task ParseTypeScriptDefinitions(ParsedModule sourceFile, string text)
         {
-            var x = new TypeScriptAST(text);
+            var x = new TypeScriptAST(text, sourceFile.SourceFile);
             await ParseNodeChildren(sourceFile, x.RootNode.Children);
         }
         async Task ParseNode(ParsedModule sourceFile, Node child)
         {
             var fileDir = IOPath.GetDirectoryName(sourceFile.SourceFile);
-            //var subPath = IOPath.GetRelativePath(SourcePath, fileDir);
             var str = child.GetText();
             if (child is ModuleDeclaration moduleDeclaration)
             {
