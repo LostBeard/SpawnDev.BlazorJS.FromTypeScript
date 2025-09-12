@@ -38,3 +38,14 @@ li.rz-treenode {
 .rz-tabview-nav .rz-button.rz-variant-outlined.rz-primary.rz-shade-default {
     box-shadow: none;
 }
+
+
+.progress-modal {
+    position: fixed;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 65535;
+    background-color: #00000088;
+}
