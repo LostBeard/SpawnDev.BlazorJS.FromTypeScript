@@ -9,6 +9,15 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
     // https://ts-ast-viewer.com/
     public static class TypeScriptASTExtensions
     {
+        public static string GetTextSafe(this Node _this)
+        {
+            try
+            {
+                return _this.GetText();
+            }
+            catch { }
+            return "";
+        }
         public static string TitleCaseInvariant(this string t)
         {
             if (t == null) return null;
@@ -35,7 +44,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
             var ret = new ParsedInterfaceOrClass();
             ret.JSModuleNamespace = JSModuleNamespace;
             ret.Parent = parent;
-            ret.SourceText = _this.GetText();
+            ret.SourceText = _this.GetTextSafe();
             if (_this is InterfaceDeclaration interfaceDeclaration)
             {
                 ret.IsClass = false;
@@ -70,7 +79,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                 else if (child.Children.Count == 2)
                 {
                     var childa = child.Children.First();
-                    var isPartial = childa.GetText() == "Partial";
+                    var isPartial = childa.GetTextSafe() == "Partial";
                     var child0 = child.Children.Last();
                     if (child0.Kind == SyntaxKind.ExpressionWithTypeArguments)
                     {
@@ -84,7 +93,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                 else
                 {
                     var childa = child.Children.First();
-                    var isPartial = childa.GetText() == "Partial";
+                    var isPartial = childa.GetTextSafe() == "Partial";
                     var child0 = child.Children.Last();
                     if (child0.Kind == SyntaxKind.ExpressionWithTypeArguments)
                     {
@@ -102,7 +111,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
             ret.TypeParameters = typeParameters;
             foreach (var child in _this.Children)
             {
-                var str = child.GetText();
+                var str = child.GetTextSafe();
                 var modifiers = child.Children.Where(o => Utilities.IsModifierKind(o.Kind)).ToList();
                 var others = child.Children.Except(modifiers).ToList();
                 if (child is MethodDeclaration || child is ConstructorDeclaration)
@@ -164,9 +173,11 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                         m.Parent = ret;
                         m.SourceText = str;
                         m.Name = setAccessorDeclaration.IdentifierStr;
-                        var returnType = GetTypeString(child.Children.Last());
+                        var tNode = child.Children.Last();
+                        var returnType = GetTypeString(tNode);
                         m.Type = new ParsedType
                         {
+                            SourceText = tNode.GetTextSafe(),
                             Name = returnType,
                         };
                         ret.Properties.Add(m);
@@ -178,13 +189,15 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                     var m = ret.Properties.FirstOrDefault(o => o.Name == getAccessorDeclaration.IdentifierStr);
                     if (m == null)
                     {
+                        var tNode = child.Children.Last();
                         m = new ParsedProperty();
                         m.Parent = ret;
                         m.SourceText = str;
                         m.Name = getAccessorDeclaration.IdentifierStr;
-                        var returnType = GetTypeString(child.Children.Last());
+                        var returnType = GetTypeString(tNode);
                         m.Type = new ParsedType
                         {
+                            SourceText = tNode.GetTextSafe(),
                             Name = returnType,
                         };
                         ret.Properties.Add(m);
@@ -241,29 +254,32 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
             var m = new ParsedMethod();
             m.Parent = parent;
             m.IsConstructor = isConstructor;
-            m.SourceText = child.GetText();
+            m.SourceText = child.GetTextSafe();
             m.Name = child.IdentifierStr ?? "";
             if (!isConstructor)
             {
-                var returnType = GetTypeString(child.Children.Last());// child.Children.Last().GetText();
+                var tNode = child.Children.Last();
+                var returnType = GetTypeString(tNode);// child.Children.Last().GetTextSafe();
                 if (returnType.Contains("Promise"))
                 {
                     var nmt = true;
                 }
                 m.ReturnType = new ParsedType
                 {
+                    SourceText = tNode.GetTextSafe(),
                     Name = returnType,
                 };
             }
             var typeNodes = child.OfKind<ParameterDeclaration>();
             foreach (var typeNode in typeNodes)
             {
-                var paramStr = typeNode.GetText();
+                var paramStr = typeNode.GetTextSafe();
                 var pOthers = typeNode.GetNonModifiers();
                 var pModifiers = typeNode.GetModifiers();
                 var leftCnt = pOthers.Count();
                 if (leftCnt == 2)
                 {
+                    var tNode = pOthers.Last();
                     m.Parameters.Add(new ParsedMethodParameter
                     {
                         Name = typeNode.IdentifierStr,
@@ -271,7 +287,8 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                         IsParamsArray = typeNode.HasKind(SyntaxKind.DotDotDotToken),
                         Type = new ParsedType
                         {
-                            Name = GetTypeString(pOthers.Last())
+                            SourceText = tNode.GetTextSafe(),
+                            Name = GetTypeString(tNode)
                         }
                     });
                 }
@@ -292,8 +309,27 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
             switch (node.Kind)
             {
                 case SyntaxKind.UnionType:
-                    var typeStrings = node.Children.Select(GetTypeString).ToList();
-                    ret = $"Union<{string.Join(", ", typeStrings.Select(o => o.Trim('"')))}>";
+                    var typeStrings = node.Children.Select(GetTypeString).Distinct().ToList();
+                    var undefinedAllowed = typeStrings.Contains("undefined");
+                    var nullAllowed = typeStrings.Contains("null");
+                    typeStrings = typeStrings.Where(o => !new[] { "undefined", "null" }.Contains(o)).ToList();
+                    if (typeStrings.Count == 0)
+                    {
+                        ret = "object";
+                    }
+                    else if (typeStrings.Count == 1)
+                    {
+                        ret = typeStrings.First();
+                    }
+                    else
+                    {
+                        ret = $"Union<{string.Join(", ", typeStrings.Select(o => o.Trim('"')))}>";
+                    }
+                    if (undefinedAllowed || nullAllowed)
+                    {
+                        // 
+                        //ret += "?";
+                    }
                     break;
                 case SyntaxKind.LastTypeNode:
                     ret = GetTypeString(node.Children[0]);
@@ -301,7 +337,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                 case SyntaxKind.NumberKeyword:
                 case SyntaxKind.Identifier:
                 case SyntaxKind.StringKeyword:
-                    ret = node.GetText();
+                    ret = node.GetTextSafe();
                     break;
                 case SyntaxKind.StringLiteral:
                     ret = "string";
@@ -310,10 +346,10 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                     ret = "object";
                     break;
                 case SyntaxKind.TrueKeyword:
-                    ret = node.GetText();
+                    ret = node.GetTextSafe();
                     break;
                 case SyntaxKind.FalseKeyword:
-                    ret = node.GetText();
+                    ret = node.GetTextSafe();
                     break;
                 case SyntaxKind.TypeReference:
                     var typeReferenceChildren = node.Children.Where(o => o.Kind != SyntaxKind.Identifier).ToList();
@@ -353,7 +389,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
         {
             try
             {
-                return node.GetText();
+                return node.GetTextSafe();
             }
             catch { }
             return "";

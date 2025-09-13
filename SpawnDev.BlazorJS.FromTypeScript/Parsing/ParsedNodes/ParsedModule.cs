@@ -14,6 +14,7 @@
         public string SourceFile { get; set; } = "";
         //public string Name { get; set; } = "";
         public string SubPath { get; set; } = "";
+        public string File { get; set; }
         public List<ParsedConstant> Constants { get; set; } = new List<ParsedConstant>();
         public List<ParsedInterfaceOrClass> Interfaces { get; set; } = new List<ParsedInterfaceOrClass>();
         public List<ParsedEnum> Enums { get; set; } = new List<ParsedEnum>();

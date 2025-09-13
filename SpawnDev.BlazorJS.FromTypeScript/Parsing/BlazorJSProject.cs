@@ -41,12 +41,21 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
         {
             Modules.Clear();
             var files = await FS.GetInfos(SourcePath, true);
+            var indexFile = files.FirstOrDefault(o => o.Name == "index.d.ts");
             var tsdFiles = files.Where(o => o.Name.EndsWith(".d.ts")).ToList();
             TypeScriptDeclarationFileCount = tsdFiles.Count;
-            foreach (var file in tsdFiles)
+            if (indexFile != null)
             {
-                await ParseTypeScriptDefinitionsFile(file.FullPath);
+                await ParseTypeScriptDefinitionsFile(indexFile.FullPath);
                 OnProgress?.Invoke();
+            }
+            else
+            {
+                foreach (var file in tsdFiles)
+                {
+                    await ParseTypeScriptDefinitionsFile(file.FullPath);
+                    OnProgress?.Invoke();
+                }
             }
         }
         string GetMethodParamsAsCSharp(ParsedMethod parsedMethod)
@@ -128,7 +137,7 @@ namespace {m.ModuleNamespace}
         #region Constructors
         /// <inheritdoc/>
         public {c.CSClassName}(IJSInProcessObjectReference _ref) : base(_ref) {{ }}
-{string.Join("\r\n", c.Methods.Where(o => o.IsConstructor).OrderByDescending(o => o.IsConstructor).ThenBy(o => o.Name).Select(m => m.ToString("        ")))}
+{string.Join("\r\n", c.Methods.Where(o => o.IsConstructor).Select(m => m.ToString("        ")))}
         #endregion
 
         #region Properties
@@ -136,7 +145,7 @@ namespace {m.ModuleNamespace}
         #endregion
 
         #region Methods
-{string.Join("\r\n", c.Methods.Where(o => !o.IsConstructor && (!IgnoreUnderscoreMembers || !o.Name.StartsWith("_"))).OrderByDescending(o => o.IsConstructor).ThenBy(o => o.Name).Select(m => m.ToString("        ")))}
+{string.Join("\r\n", c.Methods.Where(o => !o.IsConstructor && !string.IsNullOrWhiteSpace(o.Name) && (!IgnoreUnderscoreMembers || !o.Name.StartsWith("_"))).OrderByDescending(o => o.Name).Select(m => m.ToString("        ")))}
         #endregion
     }}
 }}
@@ -266,6 +275,7 @@ namespace {m.ModuleNamespace}
             {
                 //Name = subFilePath,
                 SubPath = subPath,
+                File = file,
                 //DestDir = destDir,
                 //DestFile = outFile,
                 SourceFile = file,
@@ -294,7 +304,7 @@ namespace {m.ModuleNamespace}
         async Task ParseNode(ParsedModule sourceFile, Node child)
         {
             var fileDir = IOPath.GetDirectoryName(sourceFile.SourceFile);
-            var str = child.GetText();
+            var str = child.GetTextSafe();
             if (child is ModuleDeclaration moduleDeclaration)
             {
                 var nmt = true;
@@ -318,12 +328,12 @@ namespace {m.ModuleNamespace}
                     }
                     var typeNode = variableDeclartion.GetNonModifiers().Last();
                     var m = new ParsedConstant();
-                    m.SourceText = variableDeclartion.GetText();
+                    m.SourceText = variableDeclartion.GetTextSafe();
                     m.Name = variableDeclartion.IdentifierStr;
                     m.Type = new ParsedType
                     {
                         Name = typeNode.GetTypeString(),
-                        SourceText = typeNode.GetText(),
+                        SourceText = typeNode.GetTextSafe(),
                     };
                     sourceFile.Constants.Add(m);
                 }
@@ -337,7 +347,7 @@ namespace {m.ModuleNamespace}
                 var aliasName = typeAliasDeclaration.IdentifierStr;
                 var unionType = typeAliasDeclaration.OfKind<UnionTypeNode>().ToList().FirstOrDefault();
                 var m = new ParsedTypeAlias();
-                m.SourceText = child.GetText();
+                m.SourceText = child.GetTextSafe();
                 m.Name = typeAliasDeclaration.IdentifierStr;
                 var unionTypes = unionType?.Children.Select(o => o.IdentifierStr).ToArray() ?? Array.Empty<string>();
                 m.UnionTypes = unionTypes;
@@ -363,13 +373,13 @@ namespace {m.ModuleNamespace}
             else if (child is EnumDeclaration enumDeclaration)
             {
                 var m = new ParsedEnum();
-                m.SourceText = child.GetText();
+                m.SourceText = child.GetTextSafe();
                 m.Name = enumDeclaration.IdentifierStr;
                 foreach (var c in enumDeclaration.OfKind<EnumMember>())
                 {
                     var enuMentry = new ParsedEnumEntry();
                     enuMentry.Name = c.IdentifierStr;
-                    enuMentry.Value = c.OfKind<NumericLiteral>().FirstOrDefault()?.GetText();
+                    enuMentry.Value = c.OfKind<NumericLiteral>().FirstOrDefault()?.GetTextSafe();
                     m.Values.Add(enuMentry);
                 }
                 sourceFile.Enums.Add(m);
@@ -395,7 +405,7 @@ namespace {m.ModuleNamespace}
             {
                 if (importDeclaration.Children.FirstOrDefault()?.Kind == SyntaxKind.StringLiteral)
                 {
-                    var importName = importDeclaration.Children.First().GetText();
+                    var importName = importDeclaration.Children.First().GetTextSafe();
                     var nmt = true;
                 }
                 else if (importDeclaration.Children.Count == 2)
@@ -470,8 +480,8 @@ namespace {m.ModuleNamespace}
         //            IsPublic = x.First.Kind != SyntaxKind.PrivateKeyword,
         //            Args = ((ISignatureDeclaration)x).Parameters.Select(x => new
         //            {
-        //                Name = x.Children.OfKind(SyntaxKind.Identifier).FirstOrDefault().GetText(),
-        //                Type = x.Children.OfKind(SyntaxKind.TypeReference).FirstOrDefault()?.GetText(),
+        //                Name = x.Children.OfKind(SyntaxKind.Identifier).FirstOrDefault().GetTextSafe(),
+        //                Type = x.Children.OfKind(SyntaxKind.TypeReference).FirstOrDefault()?.GetTextSafe(),
         //            }),
         //        }).ToArray();
 
@@ -544,11 +554,11 @@ namespace {m.ModuleNamespace}
             var name = x.IdentifierStr;
             if (string.IsNullOrEmpty(name))
             {
-                name = x.GetText();
+                name = x.GetTextSafe();
             }
             if (string.IsNullOrEmpty(name) && x.First is LiteralExpression literal)
             {
-                name = x.First.GetText();
+                name = x.First.GetTextSafe();
             }
             if (string.IsNullOrEmpty(name))
             {
@@ -564,7 +574,7 @@ namespace {m.ModuleNamespace}
         //    var isReadOnly = children.First().Kind == SyntaxKind.ReadonlyKeyword;
         //    if (isReadOnly) children = children.Skip(1).ToList();
         //    var chIdent = children.First();
-        //    var propertyName = chIdent.Kind == SyntaxKind.ObjectLiteralExpression ? chIdent.First.GetText() : chIdent.GetText();
+        //    var propertyName = chIdent.Kind == SyntaxKind.ObjectLiteralExpression ? chIdent.First.GetTextSafe() : chIdent.GetTextSafe();
         //    children = children.Skip(1).ToList();
         //    var propertyIsOptional = children.First().Kind == SyntaxKind.QuestionToken;
         //    if (propertyIsOptional) children = children.Skip(1).ToList();
@@ -639,7 +649,7 @@ namespace {m.ModuleNamespace}
                 else if (ch.Kind == SyntaxKind.FunctionType)
                 {
                     // TODO
-                    typeName = ch.GetText();
+                    typeName = ch.GetTextSafe();
                     continue;
                 }
                 else if (ch.Kind == SyntaxKind.ParenthesizedType)
@@ -653,7 +663,7 @@ namespace {m.ModuleNamespace}
                             continue;
                         }
                     }
-                    var tmpTxt = ch.GetText();
+                    var tmpTxt = ch.GetTextSafe();
                     var paranTypes = tmpTxt.Substring(1);
                     paranTypes = paranTypes.Substring(0, paranTypes.Length - 1);
                     var paranTypesL = paranTypes.Split("|").Select(o => o.Trim()).ToList();
@@ -676,7 +686,7 @@ namespace {m.ModuleNamespace}
                 }
                 else
                 {
-                    typeName = ch.GetText();
+                    typeName = ch.GetTextSafe();
                 }
                 if (!string.IsNullOrEmpty(typeName))
                 {
