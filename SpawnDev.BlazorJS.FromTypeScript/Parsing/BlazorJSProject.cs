@@ -336,14 +336,12 @@ namespace {m.ModuleNamespace}
             }
             else if (child is InterfaceDeclaration interfaceDeclaration)
             {
+#if DEBUG
                 var nmt = child.GetView();
                 Console.WriteLine(nmt);
+#endif
                 var parsedInterface = interfaceDeclaration.ParseInterfaceOrClass(sourceFile, JSModuleNamespace);
                 var existing = Interfaces.FirstOrDefault(o => o.JSNameSpaceName == parsedInterface.JSNameSpaceName);
-                if (parsedInterface.Name == "Object3D")
-                {
-                    var nmttt = true;
-                }
                 if (existing != null)
                 {
                     if (existing.IsClass)
@@ -369,14 +367,12 @@ namespace {m.ModuleNamespace}
             }
             else if (child is ClassDeclaration classDeclaration)
             {
+#if DEBUG
                 var nmt = child.GetView();
                 Console.WriteLine(nmt);
+#endif
                 var parsedClass = classDeclaration.ParseInterfaceOrClass(sourceFile, JSModuleNamespace);
                 var existing = Interfaces.FirstOrDefault(o => o.JSNameSpaceName == parsedClass.JSNameSpaceName);
-                if (parsedClass.Name == "Object3D")
-                {
-                    var nmttt = true;
-                }
                 if (existing != null)
                 {
                     if (existing.IsClass)

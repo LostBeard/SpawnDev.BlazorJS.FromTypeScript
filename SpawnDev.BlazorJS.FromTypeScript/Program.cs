@@ -41,6 +41,8 @@ builder.Services.AddScoped<FileIconService>();
 builder.Services.AddScoped<ProgressModalService>(); 
 
 var host = await builder.Build().StartBackgroundServices();
+
+#if DEBUG
 var fileService = host.Services.GetRequiredService<AsyncFileSystem>();
 
 
@@ -115,5 +117,6 @@ var nmtt = true;
 //var fileBy = await gitHubService.GetBytes("LostBeard/SpawnDev.BlazorJS/README.md");
 //var fileSs = await gitHubService.GetString("LostBeard/SpawnDev.BlazorJS/README.md");
 //var fileSt = await gitHubService.GetArrayBuffer("LostBeard/SpawnDev.BlazorJS/README.md");
+#endif
 await host.BlazorJSRunAsync();
 
