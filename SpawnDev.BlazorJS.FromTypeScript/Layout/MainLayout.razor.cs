@@ -586,6 +586,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
 
                 using var pm = await ProgressModalService.NewSession("Creating project...");
                 var parser = new BlazorJSProject(FS, sourcePath, info.ProjectName, info.JSModuleNamespace, info.NameSpaceFromPath);
+                parser.UseCSNaming = info.UseCSNaming;
                 var writing = false;
                 void Parser_OnProgress()
                 {
