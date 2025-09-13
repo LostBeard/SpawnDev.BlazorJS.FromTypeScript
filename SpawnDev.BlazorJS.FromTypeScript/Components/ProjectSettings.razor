@@ -38,6 +38,14 @@
                 </RadzenRow>
                 <RadzenRow AlignItems="AlignItems.Stretch">
                     <RadzenColumn Size="4">
+                        <RadzenLabel Text="Export interfaces as classes" Component="ExportInterfacesAsClasses" />
+                    </RadzenColumn>
+                    <RadzenColumn Style="text-align: right;">
+                        <RadzenSwitch Disabled=@Disabled Name="ExportInterfacesAsClasses" @bind-Value="@Info.ExportInterfacesAsClasses" />
+                    </RadzenColumn>
+                </RadzenRow>
+                <RadzenRow AlignItems="AlignItems.Stretch">
+                    <RadzenColumn Size="4">
                         <RadzenLabel Text="Source" Component="Source" />
                     </RadzenColumn>
                     <RadzenColumn Style="text-align: right;">

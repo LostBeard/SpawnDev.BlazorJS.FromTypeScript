@@ -24,6 +24,10 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
         /// </summary>
         public bool UseCSNaming { get; set; } = true;
         /// <summary>
+        /// Export interfaces the same way classes are
+        /// </summary>
+        public bool ExportInterfacesAsClasses { get; set; } = false; 
+        /// <summary>
         /// The path to the source in the async file system
         /// </summary>
         public string Source { get; set; }

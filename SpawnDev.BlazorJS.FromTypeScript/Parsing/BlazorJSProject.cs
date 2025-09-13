@@ -85,6 +85,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
         }
         public bool IgnoreUnderscoreMembers = true;
         public bool UseCSNaming { get; set; } = true;
+        public bool ExportInterfacesAsClasses { get; set; } = false;
         public async Task WriteProject(string OutPath, Action<int, int> progressCallback)
         {
             if (await FS.FileExists(OutPath)) throw new Exception($"{nameof(OutPath)} should be a directory. File was found.");
@@ -101,6 +102,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
             {
                 foreach (var c in m.Interfaces)
                 {
+                    if (!c.IsClass && !ExportInterfacesAsClasses) continue;
                     var fileNameP = IOPath.Combine(OutPath, m.SubPath, $"{c.Name}.cs");
                     var fileName = IOPath.GetFullPath(fileNameP)!;
                     var code = $@"
