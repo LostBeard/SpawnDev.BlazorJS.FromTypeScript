@@ -70,7 +70,7 @@ public static {CSReturnType} {Name.TitleCaseInvariant()} {{ get => JS.Get<{CSRet
 /// <summary>
 /// {SourceText?.Replace("\n", "\n        /// ")}
 /// </summary>
-public {CSReturnType} {CSPropertyName} {{ get => JSRef!.GetAsyncVoid(""{JSNameSpaceName}"");{(!ShouldHaveSetter ? "" : $@" set => JSRef!.Set(""{JSNameSpaceName}"", value);")} }}
+public {CSReturnType} {CSPropertyName} {{ get => JSRef!.GetAsyncVoid(""{Name}"");{(!ShouldHaveSetter ? "" : $@" set => JSRef!.Set(""{Name}"", value);")} }}
 ".Trim();
             }
             else if (ReturnsTask)
@@ -79,7 +79,7 @@ public {CSReturnType} {CSPropertyName} {{ get => JSRef!.GetAsyncVoid(""{JSNameSp
 /// <summary>
 /// {SourceText?.Replace("\n", "\n        /// ")}
 /// </summary>
-public {CSReturnType} {CSPropertyName} {{ get => JSRef!.GetAsync<{Type!.GetTypeArgumentsDelimited(Parent.CSClassName)}>(""{JSNameSpaceName}"");{(!ShouldHaveSetter ? "" : $@" set => JSRef!.Set(""{JSNameSpaceName}"", value);")} }}
+public {CSReturnType} {CSPropertyName} {{ get => JSRef!.GetAsync<{Type!.GetTypeArgumentsDelimited(Parent.CSClassName)}>(""{Name}"");{(!ShouldHaveSetter ? "" : $@" set => JSRef!.Set(""{Name}"", value);")} }}
 ".Trim();
             }
             else
@@ -88,7 +88,7 @@ public {CSReturnType} {CSPropertyName} {{ get => JSRef!.GetAsync<{Type!.GetTypeA
 /// <summary>
 /// {SourceText?.Replace("\n", "\n        /// ")}
 /// </summary>
-public {CSReturnType} {CSPropertyName} {{ get => JSRef!.Get<{CSReturnType}>(""{JSNameSpaceName}"");{(!ShouldHaveSetter ? "" : $@" set => JSRef!.Set(""{JSNameSpaceName}"", value);")} }}
+public {CSReturnType} {CSPropertyName} {{ get => JSRef!.Get<{CSReturnType}>(""{Name}"");{(!ShouldHaveSetter ? "" : $@" set => JSRef!.Set(""{Name}"", value);")} }}
 ".Trim();
             }
             #endregion
