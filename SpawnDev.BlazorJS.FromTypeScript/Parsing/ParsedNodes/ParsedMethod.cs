@@ -59,7 +59,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing.ParsedNodes
 /// <summary>
 /// {SourceText?.Trim().Replace("\n", "\n/// ")}
 /// </summary>
-public {CSMethodName}({GetMethodParamsAsCSharp(this)}) => base(JS.New(""{JSNameSpaceName}""{GetMethodParamNames(this, ", ")}));
+public {CSMethodName}({GetMethodParamsAsCSharp(this)}) : base(JS.New(""{JSNameSpaceName}""{GetMethodParamNames(this, ", ")})) {{ }}
 ";
             }
             #region Static

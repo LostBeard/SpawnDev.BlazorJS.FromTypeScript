@@ -101,6 +101,12 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
 
             if (await FS.FileExists(OutPath)) throw new Exception($"{nameof(OutPath)} should be a directory. File was found.");
             if (!await FS.DirectoryExists(OutPath)) Directory.CreateDirectory(OutPath);
+
+            // A basic .csproj file
+            var proj = GetCSProjStr();
+            await FS.Write(IOPath.Combine(OutPath, $"{ProjectName}.csproj"), proj);
+            
+            //
             var total = Modules.Count;
             var done = 0;
             foreach (var m in Modules.Values)
@@ -111,6 +117,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                     var fileName = IOPath.GetFullPath(fileNameP)!;
                     var code = $@"
 using System.Text;
+using Microsoft.JSInterop;
 using SpawnDev.BlazorJS;
 using SpawnDev.BlazorJS.JSObjects;
 
@@ -143,6 +150,7 @@ namespace {m.ModuleNamespace}
                     //var fileName = IOPath.GetFullPath(IOPath.Combine(m.DestDir, $"{c.Name}.cs"));
                     var code = $@"
 using System.Text;
+using Microsoft.JSInterop;
 using SpawnDev.BlazorJS;
 using SpawnDev.BlazorJS.JSObjects;
 
@@ -192,6 +200,7 @@ global using {o.Name} = SpawnDev.BlazorJS.Union<{AliasForToTypeNameArray(o.Union
 
                     code = $@"
 using System.Text;
+using Microsoft.JSInterop;
 using SpawnDev.BlazorJS;
 using SpawnDev.BlazorJS.JSObjects;
 
@@ -681,5 +690,31 @@ namespace {m.ModuleNamespace}
             typesFound = typesFound.ToList();
             return typesFound;
         }
+        string GetCSProjStr()
+        {
+            return $@"
+<Project Sdk=""Microsoft.NET.Sdk.Razor"">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Version>0.0.1</Version>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include=""Microsoft.AspNetCore.Components.WebAssembly"" Version=""8.0.19"" />
+		<PackageReference Include=""System.Text.Json"" Version=""8.0.6"" />
+		<PackageReference Include=""SpawnDev.BlazorJS"" Version=""2.29.0"" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<SupportedPlatform Include=""browser"" />
+	</ItemGroup>
+
+</Project>
+".Trim();
+        }
     }
+
 }
