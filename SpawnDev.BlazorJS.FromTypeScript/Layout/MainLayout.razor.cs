@@ -70,6 +70,11 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
         private async void _delayedReload_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
             JS.Log("_delayedReload_Elapsed");
+            if (ProgressModalService.Visible)
+            {
+                _delayedReload?.Start();
+                return;
+            }
             if (tree != null) await tree.Reload();
             StateHasChanged();
         }
@@ -245,6 +250,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                 options.Add(new ContextMenuItem
                 {
                     Text = "Extract JSObjects",
+                    Icon = "file_export",
                     Value = async () =>
                     {
                         await NewProject(f.FullPath, libraryName);

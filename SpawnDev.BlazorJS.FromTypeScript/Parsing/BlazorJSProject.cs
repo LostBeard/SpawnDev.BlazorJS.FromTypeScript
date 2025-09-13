@@ -2,6 +2,7 @@
 using Sdcb.TypeScript.TsTypes;
 using SpawnDev.BlazorJS.FromTypeScript.Parsing.ParsedNodes;
 using SpawnDev.BlazorJS.FromTypeScript.Services;
+using System.Linq;
 using System.Text.RegularExpressions;
 using Type = System.Type;
 
@@ -44,18 +45,9 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
             TypeScriptDeclarationFileCount = tsdFiles.Count;
             foreach (var file in tsdFiles)
             {
-                await ParseTypeScriptDefinationsFile(file.FullPath);
+                await ParseTypeScriptDefinitionsFile(file.FullPath);
                 OnProgress?.Invoke();
             }
-            //var files = FS.EnumerateInfos(SourcePath, true);
-            //await foreach (var file in files)
-            //{
-            //    if (file.Name.EndsWith(".d.ts"))
-            //    {
-            //        await ParseTypeScriptDefinationsFile(file.FullPath);
-            //        OnProgress?.Invoke();
-            //    }
-            //}
         }
         string GetMethodParamsAsCSharp(ParsedMethod parsedMethod)
         {
@@ -73,10 +65,40 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
             return !string.IsNullOrEmpty(ret) ? $"{prepend}{ret}" : ret;
 
         }
+        string ResolveTypeNameToFullName(string typeName)
+        {
+            var fndClass = Interfaces.FirstOrDefault(o => o.CSClassName == typeName);
+            if (fndClass != null)
+            {
+                return fndClass.ModuleNamespace;
+            }
+            var fndEnum = Enums.FirstOrDefault(o => o.CSEnumName == typeName);
+            if (fndEnum != null)
+            {
+                return $"{ProjectName}.{fndEnum.CSEnumName}";
+            }
+            var fndConstant = Constants.FirstOrDefault(o => o.Name == typeName);
+            if (fndConstant != null)
+            {
+                return $"{ProjectName}.{fndConstant.Name}";
+            }
+            var type = Type.GetType($"SpawnDev.BlazorJS.JSObjects.{typeName}");
+            if (type != null)
+            {
+                return $"SpawnDev.BlazorJS.JSObjects.{typeName}";
+            }
+            return typeName;
+        }
+        string AliasForToTypeNameArray(string[] typeNames)
+        {
+            var typeFullNames = typeNames.Select(ResolveTypeNameToFullName).ToList();
+            var ret = string.Join(", ", typeFullNames);
+            return ret;
+        }
         public bool IgnoreUnderscoreMembers = true;
         public async Task WriteProject(string OutPath, Action<int, int> progressCallback)
         {
-            
+
             if (await FS.FileExists(OutPath)) throw new Exception($"{nameof(OutPath)} should be a directory. File was found.");
             if (!await FS.DirectoryExists(OutPath)) Directory.CreateDirectory(OutPath);
             var total = Modules.Count;
@@ -103,7 +125,7 @@ namespace {m.ModuleNamespace}
         #endregion
 
         #region Properties
-{string.Join("\r\n", c.Properties.Where(o => !IgnoreUnderscoreMembers || !o.Name.StartsWith("_")).OrderBy(o => o.Name).Select(m =>  m.ToString("        ")))}
+{string.Join("\r\n", c.Properties.Where(o => !IgnoreUnderscoreMembers || !o.Name.StartsWith("_")).OrderBy(o => o.Name).Select(m => m.ToString("        ")))}
         #endregion
 
         #region Methods
@@ -131,7 +153,7 @@ namespace {m.ModuleNamespace}
     /// </summary>
     public enum {c.CSEnumName}
     {{
-        {string.Join("\n        ", c.Values.Select(o =>  $"{o.Name} = {o.Value},"))}
+        {string.Join("\n        ", c.Values.Select(o => $"{o.Name} = {o.Value},"))}
     }}
 }}
 ";
@@ -140,12 +162,48 @@ namespace {m.ModuleNamespace}
                 if (m.TypeAliases.Any())
                 {
                     // create a file for all type aliases
-
+                    var fileNameP = IOPath.Combine(OutPath, m.SubPath, $"TypeDefinitions.cs");
+                    var fileName = IOPath.GetFullPath(fileNameP)!;
+                    var code = string.Join("\n", m.TypeAliases.Select(o =>
+                    {
+                        return $@"
+/// <summary>
+/// {o.SourceText?.Replace("\n", "\n/// ")}
+/// </summary>
+global using {o.Name} = SpawnDev.BlazorJS.Union<{AliasForToTypeNameArray(o.UnionTypes)}>;
+".Trim();
+                    }));
+                    await FS.Write(fileName, code);
                 }
                 if (m.Constants.Any())
                 {
                     // create a file for all type constants
+                    var fileNameP = IOPath.Combine(OutPath, m.SubPath, $"Constants.cs");
+                    var fileName = IOPath.GetFullPath(fileNameP)!;
+                    var code = string.Join("\n", m.Constants.Select(o =>
+                    {
+                        return $@"
+        /// <summary>
+        /// {o.SourceText?.Replace("\n", "\n        /// ")}
+        /// </summary>
+        public const {o.CSReturnType} {o.Name} = {o.Value};
+".Trim();
+                    }));
 
+                    code = $@"
+using System.Text;
+using SpawnDev.BlazorJS;
+using SpawnDev.BlazorJS.JSObjects;
+
+namespace {m.ModuleNamespace}
+{{
+    public static partial class Constants
+    {{
+        {code}
+    }}
+}}
+";
+                    await FS.Write(fileName, code);
                 }
                 done++;
                 progressCallback?.Invoke(total, done);
@@ -153,7 +211,7 @@ namespace {m.ModuleNamespace}
         }
         bool UseTitleCaseNaming = true;
         // https://ts-ast-viewer.com/
-        async Task ParseTypeScriptDefinationsFile(string file)
+        async Task ParseTypeScriptDefinitionsFile(string file)
         {
             file = IOPath.GetFullPath(file);
             var ext = IOPath.GetExtension(file);
@@ -268,17 +326,19 @@ namespace {m.ModuleNamespace}
             else if (child is TypeAliasDeclaration typeAliasDeclaration)
             {
                 var aliasName = typeAliasDeclaration.IdentifierStr;
-                var unionType = typeAliasDeclaration.OfKind<UnionTypeNode>().ToList();
+                var unionType = typeAliasDeclaration.OfKind<UnionTypeNode>().ToList().FirstOrDefault();
                 var m = new ParsedTypeAlias();
                 m.SourceText = child.GetText();
                 m.Name = typeAliasDeclaration.IdentifierStr;
+                var unionTypes = unionType?.Children.Select(o => o.IdentifierStr).ToArray() ?? Array.Empty<string>();
+                m.UnionTypes = unionTypes;
                 sourceFile.TypeAliases.Add(m);
                 var nmt = true;
             }
             else if (child is InterfaceDeclaration interfaceDeclaration)
             {
                 var nmt = true;
-                var interfaceStr = interfaceDeclaration.ParseInterfaceOrClass(JSModuleNamespace);
+                var interfaceStr = interfaceDeclaration.ParseInterfaceOrClass(sourceFile, JSModuleNamespace);
                 sourceFile.Interfaces.Add(interfaceStr);
                 //sb.AppendLine(interfaceStr);
                 var nmt2 = true;
@@ -286,7 +346,7 @@ namespace {m.ModuleNamespace}
             else if (child is ClassDeclaration classDeclaration)
             {
                 var nmt = true;
-                var interfaceStr = classDeclaration.ParseInterfaceOrClass(JSModuleNamespace);
+                var interfaceStr = classDeclaration.ParseInterfaceOrClass(sourceFile, JSModuleNamespace);
                 sourceFile.Interfaces.Add(interfaceStr);
                 //sb.AppendLine(interfaceStr);
                 var nmt2 = true;
@@ -329,7 +389,7 @@ namespace {m.ModuleNamespace}
                     var importName = importDeclaration.Children.First().GetText();
                     var nmt = true;
                 }
-                else  if(importDeclaration.Children.Count == 2)
+                else if (importDeclaration.Children.Count == 2)
                 {
                     try
                     {
@@ -337,7 +397,7 @@ namespace {m.ModuleNamespace}
                         var strLit = (importDeclaration.Children[1] as StringLiteral)!.Text;
                         var scriptPath = IOPath.GetFullPath(IOPath.Combine(fileDir, strLit));
                         var filePath = IOPath.GetFullPath(scriptPath);
-                        await ParseTypeScriptDefinationsFile(filePath);
+                        await ParseTypeScriptDefinitionsFile(filePath);
                     }
                     catch (Exception ex)
                     {

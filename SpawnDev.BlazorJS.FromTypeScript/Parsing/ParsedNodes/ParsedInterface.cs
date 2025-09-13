@@ -2,11 +2,14 @@
 {
     public class ParsedInterfaceOrClass : Parsed
     {
+        public ParsedModule Parent { get; set; }
         public bool IsAbstract { get; set; }
         public bool IsClass { get; set; }
         public string ProjectPath { get; set; } = "";
         public string Name { get; set; } = "";
         public string CSClassName => Name;
+        public string ModuleNamespace => $"{Parent.ModuleNamespace}.{CSClassName}";
+        public string JSNameSpaceName =>  string.Join(".", $"{JSModuleNamespace}.{CSClassName}".Split('.', StringSplitOptions.RemoveEmptyEntries));
         public List<string> Extends { get; set; }
         public List<string> TypeParameters { get; set; }
         //public List<ParsedConstructor> Constructors { get; set; } = new List<ParsedConstructor>();

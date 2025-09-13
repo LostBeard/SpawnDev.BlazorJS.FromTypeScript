@@ -30,10 +30,11 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
         public static bool HasKind(this Node _this, SyntaxKind modifier) => _this.Children.OfKind(modifier).Any();
         public static List<Node> GetModifiers(this Node _this) => _this.Children.Where(o => Utilities.IsModifierKind(o.Kind)).ToList();
         public static List<Node> GetNonModifiers(this Node _this) => _this.Children.Where(o => !Utilities.IsModifierKind(o.Kind)).ToList();
-        public static ParsedInterfaceOrClass ParseInterfaceOrClass(this Node _this, string JSModuleNamespace)
+        public static ParsedInterfaceOrClass ParseInterfaceOrClass(this Node _this, ParsedModule parent, string JSModuleNamespace)
         {
             var ret = new ParsedInterfaceOrClass();
             ret.JSModuleNamespace = JSModuleNamespace;
+            ret.Parent = parent;
             ret.SourceText = _this.GetText();
             if (_this is InterfaceDeclaration interfaceDeclaration)
             {
