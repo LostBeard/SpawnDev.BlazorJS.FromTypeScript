@@ -43,27 +43,25 @@ builder.Services.AddScoped<ProgressModalService>();
 var host = await builder.Build().StartBackgroundServices();
 
 #if DEBUG
-var fileService = host.Services.GetRequiredService<AsyncFileSystem>();
+//var fileService = host.Services.GetRequiredService<AsyncFileSystem>();
 
+//var text = @"
+//declare module ""../../core/Object3D.js"" {
+//    interface Object3D {
+//        // See https://github.com/mrdoob/three.js/pull/28683
+//        count?: number | undefined;
+//        // See https://github.com/mrdoob/three.js/pull/26335
+//        occlusionTest?: boolean | undefined;
+//        // https://github.com/mrdoob/three.js/pull/29386
+//        static?: boolean | undefined;
+//    }
+//}
+//";
 
+//var x = new TypeScriptAST(text);
+//JS.Log(x.RootNode.GetView());
 
-var text = @"
-declare module ""../../core/Object3D.js"" {
-    interface Object3D {
-        // See https://github.com/mrdoob/three.js/pull/28683
-        count?: number | undefined;
-        // See https://github.com/mrdoob/three.js/pull/26335
-        occlusionTest?: boolean | undefined;
-        // https://github.com/mrdoob/three.js/pull/29386
-        static?: boolean | undefined;
-    }
-}
-";
-
-var x = new TypeScriptAST(text);
-JS.Log(x.RootNode.GetView());
-
-var nmtt = true;
+//var nmtt = true;
 //var fs = fileService;
 
 //var dirs = await fs.GetDirectories("");

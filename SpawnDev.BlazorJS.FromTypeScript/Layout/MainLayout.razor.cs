@@ -70,7 +70,6 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
 
         private async void _delayedReload_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
-            JS.Log("_delayedReload_Elapsed");
             if (ProgressModalService.Visible)
             {
                 _delayedReload?.Start();
@@ -111,18 +110,12 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
             var location = NavigationManager.Uri;
             if (PageType == pageType && Location == location)
             {
-#if DEBUG
-                Console.WriteLine($"SendLocationChanged: false");
-#endif
                 return;
             }
             LocationUpdated = DateTime.Now;
             PageType = pageType;
             Location = location;
             HistoryEntryState = historyEntryState;
-#if DEBUG
-            Console.WriteLine($"LocationChanged: {PageTypeName} [{HistoryEntryState ?? ""}] {Location}");
-#endif
         }
         ASyncFSEntryInfo? SelectedFile = null;
 
@@ -241,7 +234,6 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
         async Task ContextMenu(MouseEventArgs args, ASyncFSEntryInfo f)
         {
             if (f == null) return;
-            JS.Log("ContextMenu", f.FullPath);
             var options = new List<ContextMenuItem>();
             //
             string? libraryRoot = f.FullPath.StartsWith($"{FileIconService.typeScriptPath}/") && f.FullPath.Split('/').Length >= 2 ? string.Join("/", f.FullPath.Split('/').Take(2)) : null;
@@ -321,7 +313,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                                     else
                                     {
                                         var f = await srcFs.ReadText(srcFile.FullPath);
-                                        // fix line endings if needed
+                                        // change line endings to system line endings
                                         f = f.Replace("\r?\n|\r", lineEndings);
                                         await destFS.Write(srcFile.FullPath, f);
                                     }
@@ -586,7 +578,6 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
             info.JSModuleNamespace = libraryName;
             info.ProjectName = libraryName;
             info = await NewProjectDialog.Show(DialogService, info);
-            JS.Log("_info", info);
             if (info != null && !string.IsNullOrEmpty(info.Source) && !string.IsNullOrEmpty(info.ProjectName))
             {
                 var projectFolder = $"{FileIconService.blazorProjectPath}/{info.ProjectName}";

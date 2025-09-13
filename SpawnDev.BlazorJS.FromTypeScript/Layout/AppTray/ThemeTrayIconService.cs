@@ -53,7 +53,6 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout.AppTray
                 ThemeService.ThemeChanged += ThemeService_ThemeChanged;
                 LoadUserTheme();
             }
-            JS.Log("Current theme", ThemeService.Theme);
         }
         void SaveUserTheme()
         {

@@ -392,13 +392,11 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                 if (ms.Success)
                 {
                     var typeName = ms.Groups[1].Value;
-                    Console.WriteLine($"typeName: {typeName}");
                     var conversion = JSToCSharpTypeConversions.FirstOrDefault(o => o.Value.Contains(typeName)).Key;
                     if (!string.IsNullOrEmpty(conversion))
                     {
                         ret = Regex.Replace(ret, $@"\b{typeName}\b", conversion);
                     }
-                    Console.WriteLine($"ret: {ret}");
                 }
             }
             {

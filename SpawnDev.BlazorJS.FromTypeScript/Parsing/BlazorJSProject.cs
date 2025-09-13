@@ -237,7 +237,7 @@ namespace {m.ModuleNamespace}
             string? txt = null;
             try
             {
-                Console.WriteLine($"Reading: {file}");
+                //Console.WriteLine($"Reading: {file}");
                 txt = await FS.ReadText(file);
             }
             catch (Exception ex)
