@@ -14,15 +14,22 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
         string FileSystemHandleDBName = "FileServiceHandles";
         string FileSystemHandleStoreName = "default";
         long dbVersion = 1;
+        Window? window;
+        public bool ShowOpenFolderDialogSupported { get; private set; }
         public FileService(HttpClient httpClient, BlazorJSRuntime js)
         {
             HttpClient = httpClient;
             JS = js;
+            if (js.IsWindow)
+            {
+                window = JS.Get<Window>("window");
+            }
         }
         async Task InitAsync()
         {
             using var navigator = JS.Get<Navigator>("navigator");
             Storage = navigator.Storage;
+            ShowOpenFolderDialogSupported = window?.ShowDirectoryPickerSupported() ?? false;
             FS = await Storage.GetDirectory();
             // init IndexedDB storage for storing FileSystemDirectoryHandles that point to external files and folders.
             if (IDBDatabase.IsSupported)
@@ -47,14 +54,15 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
         {
             return Toolbox.FilePicker.ShowOpenFilePicker(accept, multiple);
         }
+
         /// <summary>
         /// 
         /// </summary>
         /// <param name="options"></param>
         /// <returns></returns>
-        public async Task<FileSystemDirectoryHandle> ShowOpenFolderDialog(ShowDirectoryPickerOptions? options = null)
+        public async Task<FileSystemDirectoryHandle?> ShowOpenFolderDialog(ShowDirectoryPickerOptions? options = null)
         {
-            using var window = JS.Get<Window>("window");
+            if (!ShowOpenFolderDialogSupported || window == null) return null;
             return await window.ShowDirectoryPicker(options);
         }
         /// <summary>

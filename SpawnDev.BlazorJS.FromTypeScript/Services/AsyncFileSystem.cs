@@ -26,9 +26,37 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
             using var navigator = JS.Get<Navigator>("navigator");
             Storage = navigator.Storage;
         }
+        public static async Task<AsyncFileSystem> Create(FileSystemDirectoryHandle root)
+        {
+            if (root == null) throw new NullReferenceException(nameof(root));
+            var ret = new AsyncFileSystem(BlazorJSRuntime.JS);
+            ret.Root = root;
+            await ret.Ready;
+            return ret;
+        }
+        public static async Task<AsyncFileSystem> Create()
+        {
+            var ret = new AsyncFileSystem(BlazorJSRuntime.JS);
+            await ret.Ready;
+            return ret;
+        }
+        public static async Task<AsyncFileSystem> Create(string rootPath)
+        {
+            using var navigator = BlazorJSRuntime.JS.Get<Navigator>("navigator");
+            using var storage = navigator.Storage;
+            var rootDir = await storage.GetDirectory();
+            var ret = new AsyncFileSystem(BlazorJSRuntime.JS);
+            var root = string.IsNullOrEmpty(rootPath) ? rootDir : await rootDir.GetPathDirectoryHandle(rootPath);
+            ret.Root = root;
+            await ret.Ready;
+            return ret;
+        }
         async Task InitAsync()
         {
-            Root = await Storage.GetDirectory();
+            if (Root == null)
+            {
+                Root = await Storage.GetDirectory();
+            }
         }
         #region  Directory
         /// <summary>

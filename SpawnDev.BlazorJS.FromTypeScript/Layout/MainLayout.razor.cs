@@ -257,6 +257,76 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                     }
                 });
             }
+            var blazorRoot = f.FullPath.StartsWith($"{FileIconService.blazorProjectPath}/") && f.FullPath.Split('/').Length >= 2 ? string.Join("/", f.FullPath.Split('/').Take(2)) : null;
+            var blazorName = !string.IsNullOrEmpty(blazorRoot) ? blazorRoot.Split('/').Last() : null;
+            if (!string.IsNullOrEmpty(blazorName))
+            {
+                if  (false)
+                {
+                    //  not implemented yet todo
+                    options.Add(new ContextMenuItem
+                    {
+                        Text = "Export as Zip",
+                        Icon = "file_export",
+                        Value = async () =>
+                        {
+                            using var pm = await ProgressModalService.NewSession($"Exporting {blazorName}");
+                            var srcHandle = await FS.GetDirectoryHandle(blazorRoot!);
+                            var srcFs = await AsyncFileSystem.Create(srcHandle);
+                            var srcFiles = await srcFs.GetInfos("", true);
+                            pm.Max = srcFiles.Count;
+                            foreach (var srcFile in srcFiles)
+                            {
+                                if (srcFile.IsDirectory)
+                                {
+
+                                }
+                                else
+                                {
+
+                                }
+                                pm.Value += 1;
+                            }
+                            NotificationService.Notify(NotificationSeverity.Success, $"Exported {blazorName}", duration: 3000);
+                        }
+                    });
+                }
+                if (FileService.ShowOpenFolderDialogSupported)
+                {
+                    options.Add(new ContextMenuItem
+                    {
+                        Text = "Export to folder",
+                        Icon = "file_export",
+                        Value = async () =>
+                        {
+                            using var pm = await ProgressModalService.NewSession($"Exporting {blazorName}");
+                            using var target = await FileService.ShowOpenFolderDialog(new JSObjects.ShowDirectoryPickerOptions { Mode = "readwrite" });
+                            if (target != null)
+                            {
+                                var destFS = await AsyncFileSystem.Create(target);
+                                var srcHandle = await FS.GetDirectoryHandle(blazorRoot!);
+                                var srcFs = await AsyncFileSystem.Create(srcHandle);
+                                var srcFiles = await srcFs.GetInfos("", true);
+                                pm.Max = srcFiles.Count;
+                                foreach (var srcFile in srcFiles)
+                                {
+                                    if (srcFile.IsDirectory)
+                                    {
+                                        await destFS.CreateDirectory(srcFile.FullPath);
+                                    }
+                                    else
+                                    {
+                                        using var f = await srcFs.ReadFile(srcFile.FullPath);
+                                        await destFS.Write(srcFile.FullPath, f);
+                                    }
+                                    pm.Value += 1;
+                                }
+                                NotificationService.Notify(NotificationSeverity.Success, $"Exported {blazorName}", duration: 3000);
+                            }
+                        }
+                    });
+                }
+            }
             options.Add(new ContextMenuItem
             {
                 Text = "Remove",
@@ -373,7 +443,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                 var confirm = await DialogService.Confirm("This will reset everything. Are you sure?");
                 if (confirm != true) return;
                 await FS.Reset();
-                NotificationService.Notify(NotificationSeverity.Success, "Reset");
+                NotificationService.Notify(NotificationSeverity.Success, "Reset", duration: 3000);
             }
             catch (Exception ex)
             {
@@ -420,7 +490,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                 pm.Value = tsDone;
                 if (firstEntry == null)
                 {
-                    NotificationService.Notify(NotificationSeverity.Error, "No *.d.ts files found");
+                    NotificationService.Notify(NotificationSeverity.Error, "No *.d.ts files found", duration: 3000);
                     return;
                 }
 
@@ -428,7 +498,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                 var importAs = await DialogService.ShowInputBox("Import as?");
                 if (string.IsNullOrWhiteSpace(importAs))
                 {
-                    NotificationService.Notify(NotificationSeverity.Error, "Cancelled");
+                    NotificationService.Notify(NotificationSeverity.Error, "Cancelled", duration: 3000);
                     return;
                 }
                 importAs = importAs.Trim();
