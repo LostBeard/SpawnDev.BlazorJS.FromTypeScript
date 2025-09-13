@@ -9,6 +9,7 @@ using SpawnDev.BlazorJS.FromTypeScript.Services;
 using SpawnDev.BlazorJS.JSObjects;
 using SpawnDev.MatrixLEDDisplay.Demo.Services;
 using System.IO.Compression;
+using System.Text.RegularExpressions;
 using File = SpawnDev.BlazorJS.JSObjects.File;
 using Type = System.Type;
 
@@ -254,7 +255,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
             var blazorName = !string.IsNullOrEmpty(blazorRoot) ? blazorRoot.Split('/').Last() : null;
             if (!string.IsNullOrEmpty(blazorName))
             {
-                if  (false)
+                if (false)
                 {
                     //  not implemented yet todo
                     options.Add(new ContextMenuItem
@@ -314,7 +315,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                                     {
                                         var f = await srcFs.ReadText(srcFile.FullPath);
                                         // change line endings to system line endings
-                                        f = f.Replace("\r?\n|\r", lineEndings);
+                                        f = Regex.Replace(f, "\r?\n|\r", lineEndings);
                                         await destFS.Write(srcFile.FullPath, f);
                                     }
                                     pm.Value += 1;
