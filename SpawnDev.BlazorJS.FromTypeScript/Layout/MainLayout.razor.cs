@@ -6,6 +6,7 @@ using SpawnDev.BlazorJS.FromTypeScript.Components;
 using SpawnDev.BlazorJS.FromTypeScript.Layout.AppTray;
 using SpawnDev.BlazorJS.FromTypeScript.Parsing;
 using SpawnDev.BlazorJS.FromTypeScript.Services;
+using SpawnDev.BlazorJS.JSObjects;
 using SpawnDev.MatrixLEDDisplay.Demo.Services;
 using System.IO.Compression;
 using File = SpawnDev.BlazorJS.JSObjects.File;
@@ -299,6 +300,9 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                         Icon = "file_export",
                         Value = async () =>
                         {
+                            using var navigator = JS.Get<Navigator>("navigator");
+                            var platform = navigator.Platform;
+                            var lineEndings = platform?.StartsWith("win", StringComparison.InvariantCultureIgnoreCase) == true ? "\r\n" : "\n";
                             using var pm = await ProgressModalService.NewSession($"Exporting {blazorName}");
                             using var target = await FileService.ShowOpenFolderDialog(new JSObjects.ShowDirectoryPickerOptions { Mode = "readwrite" });
                             if (target != null)
@@ -316,7 +320,9 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                                     }
                                     else
                                     {
-                                        using var f = await srcFs.ReadFile(srcFile.FullPath);
+                                        var f = await srcFs.ReadText(srcFile.FullPath);
+                                        // fix line endings if needed
+                                        f = f.Replace("\r?\n|\r", lineEndings);
                                         await destFS.Write(srcFile.FullPath, f);
                                     }
                                     pm.Value += 1;
