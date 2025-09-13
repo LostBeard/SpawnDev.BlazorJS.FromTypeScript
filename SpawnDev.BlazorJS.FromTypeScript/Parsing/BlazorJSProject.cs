@@ -2,7 +2,6 @@
 using Sdcb.TypeScript.TsTypes;
 using SpawnDev.BlazorJS.FromTypeScript.Parsing.ParsedNodes;
 using SpawnDev.BlazorJS.FromTypeScript.Services;
-using System.Linq;
 using System.Text.RegularExpressions;
 using Type = System.Type;
 
@@ -85,7 +84,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
             return ret;
         }
         public bool IgnoreUnderscoreMembers = true;
-        public bool UseCSNaming { get; set; } = false;
+        public bool UseCSNaming { get; set; } = true;
         public async Task WriteProject(string OutPath, Action<int, int> progressCallback)
         {
             if (await FS.FileExists(OutPath)) throw new Exception($"{nameof(OutPath)} should be a directory. File was found.");

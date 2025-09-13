@@ -19,6 +19,11 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
         /// </summary>
         public bool NameSpaceFromPath { get; set; }
         /// <summary>
+        /// If true, methods and property names will have their first letter changed to uppercase.<br/>
+        /// If false, the names will not be changed. 
+        /// </summary>
+        public bool UseCSNaming { get; set; } = true;
+        /// <summary>
         /// The path to the source in the async file system
         /// </summary>
         public string Source { get; set; }

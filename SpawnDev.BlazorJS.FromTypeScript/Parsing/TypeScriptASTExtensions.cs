@@ -2,6 +2,7 @@
 using Sdcb.TypeScript.TsParser;
 using Sdcb.TypeScript.TsTypes;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
 {
@@ -343,9 +344,8 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                     ret = "object";
                     break;
                 case SyntaxKind.TrueKeyword:
-                    ret = "bool";
-                    break;
                 case SyntaxKind.FalseKeyword:
+                case SyntaxKind.BooleanKeyword:
                     ret = "bool";
                     break;
                 case SyntaxKind.TypeReference:
@@ -368,17 +368,30 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                 case SyntaxKind.Parameter:
                     ret = GetTypeString(node.GetNonModifiers().Last());
                     break;
-                case SyntaxKind.BooleanKeyword:
-                    ret = "bool";
-                    break;
                 default:
                     ret = TryGetText(node);
                     break;
             }
-            var conversion = JSToCSharpTypeConversions.FirstOrDefault(o => o.Value.Contains(ret)).Key;
-            if (!string.IsNullOrEmpty(conversion))
             {
-                ret = conversion;
+                var ms = Regex.Match(ret, @"^(.+)\[\]");
+                if (ms.Success)
+                {
+                    var typeName = ms.Groups[1].Value;
+                    Console.WriteLine($"typeName: {typeName}");
+                    var conversion = JSToCSharpTypeConversions.FirstOrDefault(o => o.Value.Contains(typeName)).Key;
+                    if (!string.IsNullOrEmpty(conversion))
+                    {
+                        ret = Regex.Replace(ret, $@"\b{typeName}\b", conversion);
+                    }
+                    Console.WriteLine($"ret: {ret}");
+                }
+            }
+            {
+                var conversion = JSToCSharpTypeConversions.FirstOrDefault(o => o.Value.Contains(ret)).Key;
+                if (!string.IsNullOrEmpty(conversion))
+                {
+                    ret = conversion;
+                }
             }
             return ret;
         }
