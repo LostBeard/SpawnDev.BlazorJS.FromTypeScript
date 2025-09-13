@@ -318,7 +318,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
         public static Dictionary<string, string[]> JSToCSharpTypeConversions = new Dictionary<string, string[]> {
             {"bool", ["boolean", "true", "false"] },
             {"float", ["number"] },
-            {"object", ["null", "object"] },
+            {"object", ["null", "object", "any"] },
         };
         public static string GetTypeString(this Node node)
         {
