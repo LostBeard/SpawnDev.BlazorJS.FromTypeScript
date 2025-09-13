@@ -508,6 +508,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
             var info = new ProjectInfo();
             info.Source = sourcePath;
             info.JSModuleNamespace = libraryName;
+            info.ProjectName = libraryName;
             info = await NewProjectDialog.Show(DialogService, info);
             JS.Log("_info", info);
             if (info != null && !string.IsNullOrEmpty(info.Source) && !string.IsNullOrEmpty(info.ProjectName))
