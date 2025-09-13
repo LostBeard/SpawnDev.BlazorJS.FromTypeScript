@@ -302,6 +302,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
         public static Dictionary<string, string[]> JSToCSharpTypeConversions = new Dictionary<string, string[]> {
             {"bool", ["boolean", "true", "false"] },
             {"float", ["number"] },
+            {"object", ["null", "object"] },
         };
         public static string GetTypeString(this Node node)
         {
@@ -310,9 +311,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
             {
                 case SyntaxKind.UnionType:
                     var typeStrings = node.Children.Select(GetTypeString).Distinct().ToList();
-                    var undefinedAllowed = typeStrings.Contains("undefined");
-                    var nullAllowed = typeStrings.Contains("null");
-                    typeStrings = typeStrings.Where(o => !new[] { "undefined", "null" }.Contains(o)).ToList();
+                    typeStrings = typeStrings.Where(o => !new[] { "undefined", "null", "void" }.Contains(o)).ToList();
                     if (typeStrings.Count == 0)
                     {
                         ret = "object";
@@ -324,11 +323,6 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                     else
                     {
                         ret = $"Union<{string.Join(", ", typeStrings.Select(o => o.Trim('"')))}>";
-                    }
-                    if (undefinedAllowed || nullAllowed)
-                    {
-                        // 
-                        //ret += "?";
                     }
                     break;
                 case SyntaxKind.LastTypeNode:
@@ -342,20 +336,23 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                 case SyntaxKind.StringLiteral:
                     ret = "string";
                     break;
+                case SyntaxKind.NumericLiteral:
+                    ret = "number";
+                    break;
                 case SyntaxKind.TypeLiteral:
                     ret = "object";
                     break;
                 case SyntaxKind.TrueKeyword:
-                    ret = node.GetTextSafe();
+                    ret = "bool";
                     break;
                 case SyntaxKind.FalseKeyword:
-                    ret = node.GetTextSafe();
+                    ret = "bool";
                     break;
                 case SyntaxKind.TypeReference:
                     var typeReferenceChildren = node.Children.Where(o => o.Kind != SyntaxKind.Identifier).ToList();
-                    var subTypes = typeReferenceChildren.Select(o => GetTypeString(o)).ToList();
+                    var subTypes = typeReferenceChildren.Select(o => GetTypeString(o)).Distinct().ToList();
+                    subTypes = subTypes.Where(o => !new[] { "undefined", "null", "void" }.Contains(o)).ToList();
                     var pType = node.IdentifierStr;
-                    subTypes.Remove("void");
                     if (subTypes.Any())
                     {
                         ret = $"{pType}<{string.Join(", ", subTypes)}>";

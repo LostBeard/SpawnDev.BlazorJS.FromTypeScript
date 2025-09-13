@@ -4,7 +4,7 @@
     {
         //public string ProjectDir { get; set; } = "";
         //public string DestDir { get; set; } = "";
-
+        public BlazorJSProject Project { get; set; }
         public string ProjectNamespace { get; set; }
         public string ModuleNamespaceSub { get; set; }
         public string ModuleNamespace => $"{ProjectNamespace}.{ModuleNamespaceSub}".Trim('.');

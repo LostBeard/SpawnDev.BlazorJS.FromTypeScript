@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace SpawnDev.BlazorJS.FromTypeScript.Parsing.ParsedNodes
 {
@@ -11,7 +12,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing.ParsedNodes
         public bool IsStatic { get; set; }
         public bool IsOverride { get; set; }
         public string Name { get; set; } = "";
-        public string CSPropertyName => Name.TitleCaseInvariant();
+        public string CSPropertyName => Parent.Parent.Project.UseCSNaming ? Name.TitleCaseInvariant() : Name;
         public bool HasGet { get; set; }
         public bool HasSet { get; set; }
         public bool ReadOnly { get; set; }

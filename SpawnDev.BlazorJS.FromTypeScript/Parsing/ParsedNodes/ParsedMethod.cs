@@ -192,7 +192,7 @@ public {CSReturnType} {CSMethodName}({GetMethodParamsAsCSharp(this)})
             get
             {
                 if (IsConstructor) return Parent.Name;
-                return Name.TitleCaseInvariant();
+                return Parent.Parent.Project.UseCSNaming ? Name.TitleCaseInvariant() : Name;
             }
         }
         bool HasReturnType => !IsConstructor && !string.IsNullOrEmpty(ReturnType?.Name) && ReturnType.Name != "void";

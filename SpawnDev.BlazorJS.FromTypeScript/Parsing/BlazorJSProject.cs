@@ -33,10 +33,6 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
             NameSpaceFromPath = nameSpaceFromPath;
             JSModuleNamespace = jsModuleNamespace;
         }
-        string JSModuleNamespaced(string i)
-        {
-            return string.IsNullOrEmpty(JSModuleNamespace) ? i : $"{JSModuleNamespace}.{i}";
-        }
         public async Task ProcessDir()
         {
             Modules.Clear();
@@ -57,22 +53,6 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                     OnProgress?.Invoke();
                 }
             }
-        }
-        string GetMethodParamsAsCSharp(ParsedMethod parsedMethod)
-        {
-            var sb = new List<string>();
-            foreach (var p in parsedMethod.Parameters)
-            {
-                sb.Add($"{(p.IsParamsArray ? "params " : "")}{p.Type.Name} {p.Name}");
-            }
-            return string.Join(", ", sb);
-        }
-        string GetMethodParamNames(ParsedMethod parsedMethod, string prepend = "")
-        {
-            var paramNames = parsedMethod.Parameters.Select(p => p.Name).ToList();
-            var ret = string.Join(", ", paramNames);
-            return !string.IsNullOrEmpty(ret) ? $"{prepend}{ret}" : ret;
-
         }
         string ResolveTypeNameToFullName(string typeName)
         {
@@ -105,16 +85,16 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
             return ret;
         }
         public bool IgnoreUnderscoreMembers = true;
+        public bool UseCSNaming { get; set; } = false;
         public async Task WriteProject(string OutPath, Action<int, int> progressCallback)
         {
-
             if (await FS.FileExists(OutPath)) throw new Exception($"{nameof(OutPath)} should be a directory. File was found.");
             if (!await FS.DirectoryExists(OutPath)) Directory.CreateDirectory(OutPath);
 
             // A basic .csproj file
             var proj = GetCSProjStr();
             await FS.Write(IOPath.Combine(OutPath, $"{ProjectName}.csproj"), proj);
-            
+
             //
             var total = Modules.Count;
             var done = 0;
@@ -141,7 +121,7 @@ namespace {m.ModuleNamespace}
         #endregion
 
         #region Properties
-{string.Join("\r\n", c.Properties.Where(o => !IgnoreUnderscoreMembers || !o.Name.StartsWith("_")).OrderBy(o => o.Name).Select(m => m.ToString("        ")))}
+{string.Join("\r\n", c.Properties.Where(o => !string.IsNullOrWhiteSpace(o.Name) && (!IgnoreUnderscoreMembers || !o.Name.StartsWith("_"))).OrderBy(o => o.Name).Select(m => m.ToString("        ")))}
         #endregion
 
         #region Methods
@@ -274,6 +254,7 @@ namespace {m.ModuleNamespace}
             var module = new ParsedModule
             {
                 //Name = subFilePath,
+                Project = this,
                 SubPath = subPath,
                 File = file,
                 //DestDir = destDir,
@@ -519,36 +500,36 @@ namespace {m.ModuleNamespace}
         //    await FS.Write(outFile, template);
         //    return ret;
         //}
-        Dictionary<string, string[]> _typeMappings = new Dictionary<string, string[]> {
-            { "bool", new []{ "boolean" } },
-            { "double", new []{ "number" } },
-            { "string", new []{ "String" } },
-            { "object", new []{ "any", "object" } },
-            { "", new []{ "<void>" } },
-        };
-        string GetTypeMapping(string tsType)
-        {
-            var ret = tsType;
-            if (string.IsNullOrEmpty(tsType) || tsType.Contains(" ") || tsType.Contains("|"))
-            {
-                return "object";
-            }
-            else if (tsType == "null")
-            {
-                return "object";
-            }
-            var mappings = _typeMappings.Where(o => o.Value.Contains(tsType, StringComparer.OrdinalIgnoreCase)).ToList();
-            if (mappings.Count > 0)
-            {
-                ret = mappings.First().Key;
-            }
-            else
-            {
-                _typeMappings.Add(tsType, new[] { tsType });
-                Console.WriteLine($"tsType added: {tsType}");
-            }
-            return ret;
-        }
+        //Dictionary<string, string[]> _typeMappings { get; } = new Dictionary<string, string[]> {
+        //    { "bool", new []{ "boolean" } },
+        //    { "double", new []{ "number" } },
+        //    { "string", new []{ "String" } },
+        //    { "object", new []{ "any", "object", "null" } },
+        //    { "", new []{ "<void>" } },
+        //};
+        //string GetTypeMapping(string tsType)
+        //{
+        //    var ret = tsType;
+        //    if (string.IsNullOrEmpty(tsType) || tsType.Contains(" ") || tsType.Contains("|"))
+        //    {
+        //        return "object";
+        //    }
+        //    else if (tsType == "null")
+        //    {
+        //        return "object";
+        //    }
+        //    var mappings = _typeMappings.Where(o => o.Value.Contains(tsType, StringComparer.OrdinalIgnoreCase)).ToList();
+        //    if (mappings.Count > 0)
+        //    {
+        //        ret = mappings.First().Key;
+        //    }
+        //    else
+        //    {
+        //        _typeMappings.Add(tsType, new[] { tsType });
+        //        Console.WriteLine($"tsType added: {tsType}");
+        //    }
+        //    return ret;
+        //}
         string GetInterfaceName(Node x)
         {
             var name = x.IdentifierStr;
