@@ -336,17 +336,68 @@ namespace {m.ModuleNamespace}
             }
             else if (child is InterfaceDeclaration interfaceDeclaration)
             {
-                var nmt = true;
-                var interfaceStr = interfaceDeclaration.ParseInterfaceOrClass(sourceFile, JSModuleNamespace);
-                sourceFile.Interfaces.Add(interfaceStr);
-                //sb.AppendLine(interfaceStr);
-                var nmt2 = true;
+                var nmt = child.GetView();
+                Console.WriteLine(nmt);
+                var parsedInterface = interfaceDeclaration.ParseInterfaceOrClass(sourceFile, JSModuleNamespace);
+                var existing = Interfaces.FirstOrDefault(o => o.JSNameSpaceName == parsedInterface.JSNameSpaceName);
+                if (parsedInterface.Name == "Object3D")
+                {
+                    var nmttt = true;
+                }
+                if (existing != null)
+                {
+                    if (existing.IsClass)
+                    {
+                        //  class trumps interface
+                        return;
+                    }
+                    else
+                    {
+                        var existingMemberCount = existing.Methods.Count + existing.Properties.Count;
+                        var parsedMemberCount = parsedInterface.Methods.Count + parsedInterface.Properties.Count;
+                        if (existingMemberCount > parsedMemberCount)
+                        {
+                            // existing interface definition has more members
+                            return;
+                        }
+                        //  remove the previous parsed  one so the new  one will be used.
+                        //  may need to warn the used... the project may need/use namespaceing if they are really different object types with the same name
+                        sourceFile.Interfaces.Remove(existing);
+                    }
+                }
+                sourceFile.Interfaces.Add(parsedInterface);
             }
             else if (child is ClassDeclaration classDeclaration)
             {
-                var nmt = true;
-                var interfaceStr = classDeclaration.ParseInterfaceOrClass(sourceFile, JSModuleNamespace);
-                sourceFile.Interfaces.Add(interfaceStr);
+                var nmt = child.GetView();
+                Console.WriteLine(nmt);
+                var parsedClass = classDeclaration.ParseInterfaceOrClass(sourceFile, JSModuleNamespace);
+                var existing = Interfaces.FirstOrDefault(o => o.JSNameSpaceName == parsedClass.JSNameSpaceName);
+                if (parsedClass.Name == "Object3D")
+                {
+                    var nmttt = true;
+                }
+                if (existing != null)
+                {
+                    if (existing.IsClass)
+                    {
+                        var existingMemberCount = existing.Methods.Count + existing.Properties.Count;
+                        var parsedMemberCount = parsedClass.Methods.Count + parsedClass.Properties.Count;
+                        if (existingMemberCount > parsedMemberCount)
+                        {
+                            return;
+                        }
+                        //  remove the previous parsed  one so the new  one will be used.
+                        //  may need to warn the used... the project may need/use namespaceing if they are really different object types with the same name
+                        sourceFile.Interfaces.Remove(existing);
+                    }
+                    else
+                    {
+                        // class definition trumps interface
+                        sourceFile.Interfaces.Remove(existing);
+                    }
+                }
+                sourceFile.Interfaces.Add(parsedClass);
                 //sb.AppendLine(interfaceStr);
                 var nmt2 = true;
             }

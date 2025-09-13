@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Radzen;
+using Sdcb.TypeScript;
+using Sdcb.TypeScript.TsTypes;
 using SpawnDev.BlazorJS;
 using SpawnDev.BlazorJS.FromTypeScript;
 using SpawnDev.BlazorJS.FromTypeScript.Layout;
 using SpawnDev.BlazorJS.FromTypeScript.Layout.AppTray;
+using SpawnDev.BlazorJS.FromTypeScript.Parsing;
 using SpawnDev.BlazorJS.FromTypeScript.Services;
 using SpawnDev.BlazorJS.JSObjects;
 using SpawnDev.BlazorJS.Toolbox;
@@ -40,6 +43,25 @@ builder.Services.AddScoped<ProgressModalService>();
 var host = await builder.Build().StartBackgroundServices();
 var fileService = host.Services.GetRequiredService<AsyncFileSystem>();
 
+
+
+var text = @"
+declare module ""../../core/Object3D.js"" {
+    interface Object3D {
+        // See https://github.com/mrdoob/three.js/pull/28683
+        count?: number | undefined;
+        // See https://github.com/mrdoob/three.js/pull/26335
+        occlusionTest?: boolean | undefined;
+        // https://github.com/mrdoob/three.js/pull/29386
+        static?: boolean | undefined;
+    }
+}
+";
+
+var x = new TypeScriptAST(text);
+JS.Log(x.RootNode.GetView());
+
+var nmtt = true;
 //var fs = fileService;
 
 //var dirs = await fs.GetDirectories("");

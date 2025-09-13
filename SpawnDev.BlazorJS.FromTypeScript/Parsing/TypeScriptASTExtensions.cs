@@ -10,6 +10,21 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
     // https://ts-ast-viewer.com/
     public static class TypeScriptASTExtensions
     {
+        public static string GetView(this Node _this, string pad = "")
+        {
+            if (_this.Children.Any())
+            {
+                var padNext = string.IsNullOrEmpty(pad) ? " " : $"{pad}{pad}";
+                return $@"{pad}{_this.Kind} {_this.Children.Count} : ""{_this.IdentifierStr}""
+{string.Join($"", _this.Children.Select(o => o.GetView(padNext)))}
+".TrimEnd() + "\n";
+            }
+            else
+            {
+                return $@"{pad}{_this.Kind} : ""{_this.IdentifierStr}"" Text: ""{_this.GetTextSafe()}""
+".TrimEnd() + "\n";
+            }
+        }
         public static string GetTextSafe(this Node _this)
         {
             try
