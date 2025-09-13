@@ -315,7 +315,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                                     {
                                         var f = await srcFs.ReadText(srcFile.FullPath);
                                         // change line endings to system line endings
-                                        f = Regex.Replace(f, "\r?\n|\r", lineEndings);
+                                        f = Regex.Replace(f, @"\r?\n|\r", lineEndings);
                                         await destFS.Write(srcFile.FullPath, f);
                                     }
                                     pm.Value += 1;
