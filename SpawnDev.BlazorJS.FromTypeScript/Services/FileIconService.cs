@@ -18,6 +18,11 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
             await AssetManifestService.Ready;
 
         }
+        public string? GetExtensionLanguage(string ext)
+        {
+            var r = LanguageToExtMaps.FirstOrDefault(o => o.Value.Contains(ext, StringComparer.OrdinalIgnoreCase)).Key;
+            return r;
+        }
         public string? GetPathImage(ASyncFSEntryInfo f)
         {
             string? image = null;
@@ -31,6 +36,21 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
                 image = GetDirectoryImage(f.FullPath);
             }
             return image;
+        }
+        public string? GetFileImage(string path)
+        {
+            string? image = "ext/_blank.png";
+            if (path == null) return image;
+            var assets = AssetManifestService.Assets.Where(o => o.StartsWith($"ext/")).ToList();
+            var ext = IOPath.GetExtension(path);
+            var lang = GetExtensionLanguage(ext);
+            var extImage = !string.IsNullOrEmpty(lang) ? assets.FirstOrDefault(o => o.StartsWith($"ext/{lang}_")) : null;
+            if (extImage == null && ext.StartsWith(".") && ext.Length > 1)
+            {
+                var extWithoutDot = ext.Substring(1);
+                extImage = assets.FirstOrDefault(o => o.StartsWith($"ext/{extWithoutDot}.") || o.StartsWith($"ext/{extWithoutDot}_"));
+            }
+            return !string.IsNullOrEmpty(extImage) ? extImage : image;
         }
         public string? GetDirectoryImage(string path)
         {
@@ -50,29 +70,10 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
             }   
             return image;
         }
-        public string? GetFileImage(string path)
-        {
-            string? image = "ext/_blank.png";
-            if (path == null) return image;
-            var assets = AssetManifestService.Assets;
-            var ext = IOPath.GetExtension(path);
-            if (ext == ".ts")
-            {
-                var stopHrebecauseMicrosoftHireRetardsWhoCantCodeForShit = true;
-            }
-            var lang = GetExtensionLanguage(ext);
-            var extImage = assets.FirstOrDefault(o => o.StartsWith($"ext/{lang}_"));
-            return !string.IsNullOrEmpty(extImage) ? extImage : image;
-        }
         public string? GetFileLanguage(string path)
         {
             var ext = IOPath.GetExtension(path);
             return GetExtensionLanguage(ext);
-        }
-        public string? GetExtensionLanguage(string ext)
-        {
-            var r = LanguageToExtMaps.FirstOrDefault(o => o.Value.Contains(ext, StringComparer.OrdinalIgnoreCase)).Key;
-            return r;
         }
         Dictionary<string, string[]> LanguageToExtMaps = new Dictionary<string, string[]>
     {
