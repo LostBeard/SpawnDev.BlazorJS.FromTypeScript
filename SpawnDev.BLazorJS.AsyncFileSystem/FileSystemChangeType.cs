@@ -1,4 +1,5 @@
-﻿namespace SpawnDev.BlazorJS.FromTypeScript.Services
+﻿
+namespace SpawnDev.BlazorJS.AsyncFileSystem
 {
     //
     // Summary:

@@ -1,4 +1,4 @@
-﻿namespace SpawnDev.BlazorJS.FromTypeScript.Services
+﻿namespace SpawnDev.BlazorJS.ProgressModal
 {
     public class ProgressModalService
     {
@@ -6,14 +6,26 @@
         public IReadOnlyList<ProgressSession> Sessions => _Sessions.ToList();
         List<ProgressSession> _Sessions { get; } = new List<ProgressSession>();
         public bool Visible => Sessions.Any();
-        public async Task<ProgressSession> NewSession(string text = "")
+        public bool GroupVisible(string group) => Sessions.Any(s => s.Group == group);
+        public async Task<ProgressSession> NewSessionAsync(string text = "", string group = "")
         {
             var session = new ProgressSession();
             session.Text = text ?? "";
+            session.Group = group ?? "";
             session.OnChanged += Session_OnChanged;
             _Sessions.Add(session);
             StateHasChanged();
             await Task.Delay(20);
+            return session;
+        }
+        public ProgressSession NewSession(string text = "", string group = "")
+        {
+            var session = new ProgressSession();
+            session.Text = text ?? "";
+            session.Group = group ?? "";
+            session.OnChanged += Session_OnChanged;
+            _Sessions.Add(session);
+            StateHasChanged();
             return session;
         }
         void StateHasChanged()
@@ -43,6 +55,7 @@
                     StateHasChanged();
                 }
             }
+            public string Group { get; set; } = "";
             bool _Indeterminate = true;
             public bool Indeterminate
             {
@@ -88,17 +101,17 @@
                     StateHasChanged();
                 }
             }
-            double _Min = 0;
-            public double Min
-            {
-                get => _Min;
-                set
-                {
-                    if (_Min == value) return;
-                    _Min = value;
-                    StateHasChanged();
-                }
-            }
+            //double _Min = 0;
+            //public double Min
+            //{
+            //    get => _Min;
+            //    set
+            //    {
+            //        if (_Min == value) return;
+            //        _Min = value;
+            //        StateHasChanged();
+            //    }
+            //}
             double _Max = 100;
             public double Max
             {

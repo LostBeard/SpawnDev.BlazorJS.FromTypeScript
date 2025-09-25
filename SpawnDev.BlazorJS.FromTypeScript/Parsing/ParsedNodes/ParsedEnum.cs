@@ -6,5 +6,7 @@
         public string Name { get; set; } = "";
         public List<ParsedEnumEntry> Values { get; set; } = new List<ParsedEnumEntry>();
         public ParsedEnum() { }
+        public bool IsNumeric = false;
+        public bool IsString = false;
     }
 }

@@ -1,6 +1,8 @@
-﻿using SpawnDev.BlazorJS.FromTypeScript.Parsing.ParsedNodes;
+﻿using Microsoft.VisualBasic;
 using Sdcb.TypeScript.TsParser;
 using Sdcb.TypeScript.TsTypes;
+using SpawnDev.BlazorJS.FromTypeScript.Parsing.ParsedNodes;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -10,12 +12,38 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
     // https://ts-ast-viewer.com/
     public static class TypeScriptASTExtensions
     {
+        public static string GetNodeSignature(this Node _this)
+        {
+            if (_this.Children.Any())
+            {
+                return $@"{_this.Kind.ToString()}:{string.Join(":", _this.Children.Select(o => o.Kind))}";
+            }
+            else
+            {
+                return $@"{_this.Kind.ToString()}";
+            }
+        }
+        public static string GetNodeSignature2(this Node _this, string pad = "")
+        {
+            if (_this.Children.Any())
+            {
+                var padNext = string.IsNullOrEmpty(pad) ? " " : $"{pad} ";
+                return $@"{pad}{_this.Kind}
+{string.Join($"", _this.Children.Select(o => o.GetNodeSignature2(padNext)))}
+".TrimEnd() + "\n";
+            }
+            else
+            {
+                return $@"{pad}{_this.Kind}
+".TrimEnd() + "\n";
+            }
+        }
         public static string GetView(this Node _this, string pad = "")
         {
             if (_this.Children.Any())
             {
-                var padNext = string.IsNullOrEmpty(pad) ? " " : $"{pad}{pad}";
-                return $@"{pad}{_this.Kind} {_this.Children.Count} : ""{_this.IdentifierStr}""
+                var padNext = string.IsNullOrEmpty(pad) ? " " : $"{pad} ";
+                return $@"{pad}{_this.Kind} : ""{_this.IdentifierStr}""
 {string.Join($"", _this.Children.Select(o => o.GetView(padNext)))}
 ".TrimEnd() + "\n";
             }
@@ -74,52 +102,59 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                 throw new NotImplementedException();
             }
             var typeParameters = _this.Children.Where(o => o.Kind == SyntaxKind.TypeParameter).Select(o => o.IdentifierStr).ToList();
-            var inherits = _this.OfKind(SyntaxKind.HeritageClause).Select(o => o as HeritageClause).ToList();
+            var inherits = _this.OfKind(SyntaxKind.HeritageClause).Select(o => o as HeritageClause).FirstOrDefault();
             ret.IsAbstract = _this.OfKind(SyntaxKind.AbstractKeyword).Any();
             var inheritsNames = new List<string>();
-            if (inherits.Count > 0)
+            if (inherits != null)
             {
-                var child = inherits.First();
-                if (child.Children.Count == 1)
+                foreach (var heritageChild in inherits.Children)
                 {
-                    var child0 = child.Children.First();
-                    if (child0.Kind == SyntaxKind.ExpressionWithTypeArguments)
-                    {
-                        inheritsNames.Add(child0.IdentifierStr);
-                    }
-                    else
-                    {
-                        var nmtt = true;
-                    }
+                    var typeName = GetTypeString(heritageChild, "");
+                    Console.WriteLine($"Inherits: {typeName}");
+                    inheritsNames.Add(typeName);
                 }
-                else if (child.Children.Count == 2)
-                {
-                    var childa = child.Children.First();
-                    var isPartial = childa.GetTextSafe() == "Partial";
-                    var child0 = child.Children.Last();
-                    if (child0.Kind == SyntaxKind.ExpressionWithTypeArguments)
-                    {
-                        inheritsNames.Add(child0.IdentifierStr);
-                    }
-                    else
-                    {
-                        var nmtt = true;
-                    }
-                }
-                else
-                {
-                    var childa = child.Children.First();
-                    var isPartial = childa.GetTextSafe() == "Partial";
-                    var child0 = child.Children.Last();
-                    if (child0.Kind == SyntaxKind.ExpressionWithTypeArguments)
-                    {
-                        inheritsNames.Add(child0.IdentifierStr);
-                    }
-                    else
-                    {
-                        var nmtt = true;
-                    }
-                }
+            }
+            if (inherits != null)
+            {
+                //if (child!.Children.Count == 1)
+                //{
+                //    var child0 = child.Children.First();
+                //    if (child0.Kind == SyntaxKind.ExpressionWithTypeArguments)
+                //    {
+                //    }
+                //    else
+                //    {
+                //        var nmtt = true;
+                //    }
+                //}
+                //else if (child.Children.Count == 2)
+                //{
+                //    var childa = child.Children.First();
+                //    var isPartial = childa.GetTextSafe() == "Partial";
+                //    var child0 = child.Children.Last();
+                //    if (child0.Kind == SyntaxKind.ExpressionWithTypeArguments)
+                //    {
+                //        inheritsNames.Add(child0.IdentifierStr);
+                //    }
+                //    else
+                //    {
+                //        var nmtt = true;
+                //    }
+                //}
+                //else
+                //{
+                //    var childa = child.Children.First();
+                //    var isPartial = childa.GetTextSafe() == "Partial";
+                //    var child0 = child.Children.Last();
+                //    if (child0.Kind == SyntaxKind.ExpressionWithTypeArguments)
+                //    {
+                //        inheritsNames.Add(child0.IdentifierStr);
+                //    }
+                //    else
+                //    {
+                //        var nmtt = true;
+                //    }
+                //}
                 var nmt = true;
             }
             ret.Name = _this.IdentifierStr;
@@ -132,6 +167,12 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                 var others = child.Children.Except(modifiers).ToList();
                 if (child is MethodDeclaration || child is ConstructorDeclaration)
                 {
+                    var nodeHasErrors = (child.Flags & NodeFlags.ThisNodeHasError) != 0;
+                    var nodeOrSubHasErrors = (child.Flags & NodeFlags.ThisNodeOrAnySubNodesHasError) != 0;
+                    if (nodeHasErrors || nodeOrSubHasErrors)
+                    {
+                        //continue;
+                    }
                     var m = ParseMethod(ret, child);
                     if (m == null)
                     {
@@ -142,6 +183,12 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                 else
                 if (child is PropertyDeclaration || child is PropertySignature)
                 {
+                    var nodeHasErrors = (child.Flags & NodeFlags.ThisNodeHasError) != 0;
+                    var nodeOrSubHasErrors = (child.Flags & NodeFlags.ThisNodeOrAnySubNodesHasError) != 0;
+                    if (nodeHasErrors || nodeOrSubHasErrors)
+                    {
+                        //continue;
+                    }
                     var m = new ParsedProperty();
                     m.Parent = ret;
                     m.SourceText = str;
@@ -166,19 +213,43 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                     {
                         var overrideee = true;
                     }
+                    if (m.Name == "getControllerGrip")
+                    {
+                        var nmt = true;
+                    }
                     m.IsNullable = child.Children.OfKind(SyntaxKind.QuestionToken).Any();
                     var typeNode = child.Children.Last();
-                    var typeStr = GetTypeString(typeNode);
-                    m.Type = new ParsedType
+
+                    if (typeNode.Kind == SyntaxKind.FunctionType && !m.Name.StartsWith("on"))
                     {
-                        Name = typeStr,
-                        IsNullable = false
-                    };
-                    if (others.Count() != 2)
-                    {
-                        var gg = true;
+                        // this is a callable method
+                        // more often than not, we want to use this for calling, not setting and getting
+                        // Parameter(s)?
+                        var parameters = typeNode.OfKind(SyntaxKind.Parameter);
+                        // last is return type
+                        var returnTypeNode = typeNode.Children.Last();
+                        var n = ParseMethod(ret, typeNode);
+                        if (n == null)
+                        {
+                            continue;
+                        }
+                        n.Name = m.Name;
+                        ret.Methods.Add(n);
                     }
-                    ret.Properties.Add(m);
+                    else
+                    {
+                        var typeStr = GetTypeString(typeNode, ret.Name);
+                        m.Type = new ParsedType
+                        {
+                            Name = typeStr,
+                            IsNullable = false
+                        };
+                        if (others.Count() != 2)
+                        {
+                            var gg = true;
+                        }
+                        ret.Properties.Add(m);
+                    }
                 }
                 else if (child is SetAccessorDeclaration setAccessorDeclaration)
                 {
@@ -190,7 +261,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                         m.SourceText = str;
                         m.Name = setAccessorDeclaration.IdentifierStr;
                         var tNode = child.Children.Last();
-                        var returnType = GetTypeString(tNode);
+                        var returnType = GetTypeString(tNode, ret.Name);
                         m.Type = new ParsedType
                         {
                             SourceText = tNode.GetTextSafe(),
@@ -210,7 +281,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                         m.Parent = ret;
                         m.SourceText = str;
                         m.Name = getAccessorDeclaration.IdentifierStr;
-                        var returnType = GetTypeString(tNode);
+                        var returnType = GetTypeString(tNode, ret.Name);
                         m.Type = new ParsedType
                         {
                             SourceText = tNode.GetTextSafe(),
@@ -257,6 +328,13 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
         }
         static ParsedMethod? ParseMethod(ParsedInterfaceOrClass parent, Node child)
         {
+            var nodeHasErrors = (child.Flags & NodeFlags.ThisNodeHasError) != 0;
+            var nodeOrSubHasErrors = (child.Flags & NodeFlags.ThisNodeOrAnySubNodesHasError) != 0;
+            if (nodeHasErrors || nodeOrSubHasErrors)
+            {
+                var nmttt = true;
+                //return null;
+            }
             if (child.Kind != SyntaxKind.Constructor
                 && child.Kind != SyntaxKind.MethodDeclaration
                 && child.Kind != SyntaxKind.MethodSignature
@@ -272,10 +350,11 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
             m.IsConstructor = isConstructor;
             m.SourceText = child.GetTextSafe();
             m.Name = child.IdentifierStr ?? "";
+            m.TypeParameters = child.Children.Where(o => o.Kind == SyntaxKind.TypeParameter).Select(o => o.IdentifierStr).ToList();
             if (!isConstructor)
             {
                 var tNode = child.Children.Last();
-                var returnType = GetTypeString(tNode);// child.Children.Last().GetTextSafe();
+                var returnType = GetTypeString(tNode, parent.Name);// child.Children.Last().GetTextSafe();
                 if (returnType.Contains("Promise"))
                 {
                     var nmt = true;
@@ -304,7 +383,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                         Type = new ParsedType
                         {
                             SourceText = tNode.GetTextSafe(),
-                            Name = GetTypeString(tNode)
+                            Name = GetTypeString(tNode, parent.Name)
                         }
                     });
                 }
@@ -320,13 +399,31 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
             {"float", ["number"] },
             {"object", ["null", "object", "any"] },
         };
-        public static string GetTypeString(this Node node)
+        public static List<string> GetTypeStringNodeTypes { get; } = new List<string>();
+        public static List<string> GetTypeString(this List<Node> nodes, string thisReplacement)
+        {
+            return nodes.Select(o => GetTypeString(o, thisReplacement)).ToList();
+        }
+        public static string GetTypeString(this Node node, string thisReplacement)
         {
             var ret = "";
+            var syntaxKind = node.Kind.ToString();
+            if (!GetTypeStringNodeTypes.Contains(syntaxKind))
+            {
+                GetTypeStringNodeTypes.Add(syntaxKind);
+            }
             switch (node.Kind)
             {
+                case SyntaxKind.FunctionType:
+                    var parameters = node.Children.Where(o => o.Kind == SyntaxKind.Parameter).ToList();
+                    var returnType = node.GetNonModifiers().Last();
+                    // TODO -  we can be more specific here... instead of using a Callback base class which allows any type of Callback (this works for now)
+                    ret = "Callback";
+                    break;
                 case SyntaxKind.UnionType:
-                    var typeStrings = node.Children.Select(GetTypeString).Distinct().ToList();
+                    //if (node.Children.FirstOrDefault()?.Kind == SyntaxKind.FunctionType)
+                    var isNullable = node.Children.Any(o => new[] { SyntaxKind.NullKeyword, SyntaxKind.VoidKeyword, SyntaxKind.UndefinedKeyword }.Contains(o.Kind));
+                    var typeStrings = node.Children.Where(o => !new[] { SyntaxKind.NullKeyword, SyntaxKind.VoidKeyword, SyntaxKind.UndefinedKeyword }.Contains(o.Kind)).Select(o => GetTypeString(o, thisReplacement)).Distinct().ToList();
                     typeStrings = typeStrings.Where(o => !new[] { "undefined", "null", "void" }.Contains(o)).ToList();
                     if (typeStrings.Count == 0)
                     {
@@ -342,7 +439,11 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                     }
                     break;
                 case SyntaxKind.LastTypeNode:
-                    ret = GetTypeString(node.Children[0]);
+                    ret = GetTypeString(node.Children[0], thisReplacement);
+                    break;
+                case SyntaxKind.ParenthesizedType:
+                    // always seems to havea firt child of  FunctionType or ConstructorType
+                    ret = GetTypeString(node.Children[0], thisReplacement);
                     break;
                 case SyntaxKind.NumberKeyword:
                 case SyntaxKind.Identifier:
@@ -358,34 +459,144 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                 case SyntaxKind.TypeLiteral:
                     ret = "object";
                     break;
+                case SyntaxKind.ExpressionWithTypeArguments:
+                    {
+                        var typeReferenceChildren = node.Children.Where(o => o.Kind != SyntaxKind.Identifier).ToList();
+                        var subTypes = typeReferenceChildren.Select(o => GetTypeString(o, thisReplacement)).Distinct().ToList();
+                        subTypes = subTypes.Where(o => !new[] { "undefined", "null", "void" }.Contains(o)).ToList();
+                        //subTypes = subTypes.Where(o => !new[] { "undefined", "null", "void" }.Contains(o)).ToList();
+                        var pType = node.IdentifierStr;
+                        if (subTypes.Any())
+                        {
+                            ret = $"{pType}<{string.Join(", ", subTypes)}>";
+                        }
+                        else
+                        {
+                            ret = pType;
+                        }
+                    }
+                    break;
                 case SyntaxKind.TrueKeyword:
                 case SyntaxKind.FalseKeyword:
                 case SyntaxKind.BooleanKeyword:
                     ret = "bool";
                     break;
                 case SyntaxKind.TypeReference:
-                    var typeReferenceChildren = node.Children.Where(o => o.Kind != SyntaxKind.Identifier).ToList();
-                    var subTypes = typeReferenceChildren.Select(o => GetTypeString(o)).Distinct().ToList();
-                    subTypes = subTypes.Where(o => !new[] { "undefined", "null", "void" }.Contains(o)).ToList();
-                    var pType = node.IdentifierStr;
-                    if (subTypes.Any())
                     {
-                        ret = $"{pType}<{string.Join(", ", subTypes)}>";
+                        var typeReferenceChildren = node.Children.Where(o => o.Kind != SyntaxKind.Identifier).ToList();
+                        var subTypes = typeReferenceChildren.Select(o => GetTypeString(o, thisReplacement)).Distinct().ToList();
+                        subTypes = subTypes.Where(o => !new[] { "undefined", "null", "void" }.Contains(o)).ToList();
+                        var pType = node.IdentifierStr;
+                        if (subTypes.Any())
+                        {
+                            ret = $"{pType}<{string.Join(", ", subTypes)}>";
+                        }
+                        else
+                        {
+                            ret = pType;
+                        }
                     }
-                    else
-                    {
-                        ret = pType;
-                    }
-                    break;
-                case SyntaxKind.FunctionType:
-                    ret = GetTypeString(node.Children[0]);
                     break;
                 case SyntaxKind.Parameter:
-                    ret = GetTypeString(node.GetNonModifiers().Last());
+                    ret = GetTypeString(node.GetNonModifiers().Last(), thisReplacement);
+                    break;
+                case SyntaxKind.TypeQuery:
+                    if (node.Children.Count != 1)
+                    {
+                        throw new Exception("Invalid TypeQuery");
+                    }
+                    ret = GetTypeString(node.Children[0], thisReplacement);
+                    break;
+                case SyntaxKind.QualifiedName:
+                    ret = string.Join(".", node.Children.Select(o => o.IdentifierStr));
+                    break;
+                case SyntaxKind.VoidKeyword:
+                    ret = "void";
+                    break;
+                case SyntaxKind.ThisType:
+                    ret = thisReplacement;
+                    break;
+                case SyntaxKind.ArrayType:
+                    // Array<ARRAY_TYPE>
+                    var nonMods = node.GetNonModifiers();
+                    if (nonMods.Count != 1)
+                    {
+                        throw new Exception("Invalid number of children for Array type");
+                    }
+                    var arrayType = GetTypeString(nonMods.Last(), thisReplacement);
+                    ret = $"Array<{arrayType}>";
+                    break;
+                case SyntaxKind.TupleType:
+                    // Tuple (item1Type, item2Type, ...)
+                    var nonMods1 = node.GetNonModifiers();
+                    var subTypes1 = GetTypeString(nonMods1, thisReplacement);
+                    ret = $"({string.Join(", ", subTypes1)})";
+                    break;
+                case SyntaxKind.ObjectKeyword:
+                case SyntaxKind.AnyKeyword:
+                    // any
+                    ret = "object";
+                    break;
+                case SyntaxKind.IndexedAccessType:
+                    // Ex.
+                    // TEventMap[T]
+                    // no C# equivalent atm
+                    ret = "object";
+                    break;
+                case SyntaxKind.TypeOperator:
+                    // keyof Attributes
+                    var nonMods3 = node.GetNonModifiers();
+                    var subTypes3 = GetTypeString(nonMods3, thisReplacement);
+                    ret = subTypes3.First();
+                    break;
+                case SyntaxKind.IntersectionType:
+                    // Ex.
+                    // BaseEvent<T> & TEventMap[T]
+                    // no C# equivalent atm
+                    var nonMods2 = node.GetNonModifiers();
+                    var intersectionTypes = GetTypeString(nonMods2, thisReplacement);
+                    ret = "object";
+                    break;
+                case SyntaxKind.Block:
+                    // ?
+                    ret = "object";
+                    break;
+                case SyntaxKind.NullKeyword:
+                    // any
+                    ret = "object";
+                    break;
+                case SyntaxKind.NeverKeyword:
+                    // never
+                    ret = "object";
+                    break;
+                case SyntaxKind.UndefinedKeyword:
+                    // undefined
+                    ret = "object";
+                    break;
+                case SyntaxKind.BinaryExpression:
+                    // >
+                    ret = "";
+                    break;
+                case SyntaxKind.ConstructorType:
+                    // new() => NodeMaterial
+                    ret = "Callback";
+                    break;
+                case SyntaxKind.MappedType:
+                    // { [K in
+                    ret = "object";
+                    break;
+                case SyntaxKind.ArrayLiteralExpression:
+                    // []
+                    ret = "object[]";
                     break;
                 default:
+                    var tt = node.Kind.ToString();
                     ret = TryGetText(node);
                     break;
+            }
+            if (ret.Contains("typeof "))
+            {
+                var ggg = true;
             }
             {
                 var ms = Regex.Match(ret, @"^(.+)\[\]");
@@ -406,6 +617,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
                     ret = conversion;
                 }
             }
+            ret = Regex.Replace(ret, $@"\bthis\b", thisReplacement);
             return ret;
         }
         static string TryGetText(Node node)

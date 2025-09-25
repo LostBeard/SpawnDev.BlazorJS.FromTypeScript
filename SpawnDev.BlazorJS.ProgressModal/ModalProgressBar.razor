@@ -1,0 +1,25 @@
+﻿<div class="modal-progress-bar">
+    <label for="@Id">@(ShowValue ? $"{Value} {Unit}" : "")</label>
+    @if (Indeterminate)
+    {
+        <progress id="@Id"></progress>
+    }
+    else
+    {
+        <progress id="@Id" value="@Value" max="@Max"></progress>
+    }
+</div>
+
+@code {
+    string Id = Guid.NewGuid().ToString();
+    [Parameter]
+    public double Max { get; set; } = 1;
+    [Parameter]
+    public double Value { get; set; }
+    [Parameter]
+    public bool ShowValue { get; set; }
+    [Parameter]
+    public string Unit { get; set; } = "";
+    [Parameter]
+    public bool Indeterminate { get; set; }
+}

@@ -2,13 +2,12 @@
 using SpawnDev.BlazorJS.Toolbox;
 using System.Text.Json;
 
-namespace SpawnDev.BlazorJS.FromTypeScript.Services
+namespace SpawnDev.BlazorJS.AsyncFileSystem
 {
-
     /// <summary>
     /// An asynchronous file system for the browser that uses the FileSystemDirectory returned by navigator.getDirectory()
     /// </summary>
-    public class AsyncFileSystem : IAsyncBackgroundService, IAsyncFileSystem
+    public class AsyncFSBrowser : IAsyncBackgroundService, IAsyncBrowserFileSystem
     {
         public Task Ready => _Ready ??= InitAsync();
         Task? _Ready;
@@ -20,32 +19,32 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
         /// Creates new instance
         /// </summary>
         /// <param name="js"></param>
-        public AsyncFileSystem(BlazorJSRuntime js)
+        public AsyncFSBrowser(BlazorJSRuntime js)
         {
             JS = js;
             using var navigator = JS.Get<Navigator>("navigator");
             Storage = navigator.Storage;
         }
-        public static async Task<AsyncFileSystem> Create(FileSystemDirectoryHandle root)
+        public static async Task<AsyncFSBrowser> Create(FileSystemDirectoryHandle root)
         {
             if (root == null) throw new NullReferenceException(nameof(root));
-            var ret = new AsyncFileSystem(BlazorJSRuntime.JS);
+            var ret = new AsyncFSBrowser(BlazorJSRuntime.JS);
             ret.Root = root;
             await ret.Ready;
             return ret;
         }
-        public static async Task<AsyncFileSystem> Create()
+        public static async Task<AsyncFSBrowser> Create()
         {
-            var ret = new AsyncFileSystem(BlazorJSRuntime.JS);
+            var ret = new AsyncFSBrowser(BlazorJSRuntime.JS);
             await ret.Ready;
             return ret;
         }
-        public static async Task<AsyncFileSystem> Create(string rootPath)
+        public static async Task<AsyncFSBrowser> Create(string rootPath)
         {
             using var navigator = BlazorJSRuntime.JS.Get<Navigator>("navigator");
             using var storage = navigator.Storage;
             var rootDir = await storage.GetDirectory();
-            var ret = new AsyncFileSystem(BlazorJSRuntime.JS);
+            var ret = new AsyncFSBrowser(BlazorJSRuntime.JS);
             var root = string.IsNullOrEmpty(rootPath) ? rootDir : await rootDir.GetPathDirectoryHandle(rootPath);
             ret.Root = root;
             await ret.Ready;
@@ -129,7 +128,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
         {
             var ret = new List<ASyncFSEntryInfo>();
             var infosAsyncEnum = EnumerateInfos(path, recursive);
-            await foreach(var info in infosAsyncEnum)
+            await foreach (var info in infosAsyncEnum)
             {
                 ret.Add(info);
             }
@@ -234,7 +233,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
         public async Task Reset()
         {
             var dirs = await GetDirectories("");
-            foreach(var d in dirs)
+            foreach (var d in dirs)
             {
                 try
                 {
@@ -441,6 +440,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
         {
             using var fileHandle = await Root!.GetPathFileHandle(path, true);
             using var stream = await fileHandle!.CreateWritable(new FileSystemCreateWritableOptions { KeepExistingData = true });
+            await stream.SeekToEnd(fileHandle);
             await stream.Write(data);
             stream.Close();
             FileSystemChanged?.Invoke(this, new FileSystemChangeEventArgs(FileSystemChangeType.Changed, path));
@@ -455,7 +455,8 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
         public async Task Append(string path, Blob data)
         {
             using var fileHandle = await Root!.GetPathFileHandle(path, true);
-            using var stream = await fileHandle!.CreateWritable(new FileSystemCreateWritableOptions { KeepExistingData = true }); ;
+            using var stream = await fileHandle!.CreateWritable(new FileSystemCreateWritableOptions { KeepExistingData = true });
+            await stream.SeekToEnd(fileHandle);
             await stream.Write(data);
             stream.Close();
             FileSystemChanged?.Invoke(this, new FileSystemChangeEventArgs(FileSystemChangeType.Changed, path));
@@ -471,6 +472,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
         {
             using var fileHandle = await Root!.GetPathFileHandle(path, true);
             using var stream = await fileHandle!.CreateWritable(new FileSystemCreateWritableOptions { KeepExistingData = true });
+            await stream.SeekToEnd(fileHandle);
             await stream.Write(data);
             stream.Close();
             FileSystemChanged?.Invoke(this, new FileSystemChangeEventArgs(FileSystemChangeType.Changed, path));
@@ -486,6 +488,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
         {
             using var fileHandle = await Root!.GetPathFileHandle(path, true);
             using var stream = await fileHandle!.CreateWritable(new FileSystemCreateWritableOptions { KeepExistingData = true });
+            await stream.SeekToEnd(fileHandle);
             await stream.Write(data);
             stream.Close();
             FileSystemChanged?.Invoke(this, new FileSystemChangeEventArgs(FileSystemChangeType.Changed, path));
@@ -507,6 +510,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
         {
             using var fileHandle = await Root!.GetPathFileHandle(path, true);
             using var stream = await fileHandle!.CreateWritable(new FileSystemCreateWritableOptions { KeepExistingData = true });
+            await stream.SeekToEnd(fileHandle);
             await stream.Write(data);
             stream.Close();
             FileSystemChanged?.Invoke(this, new FileSystemChangeEventArgs(FileSystemChangeType.Changed, path));
@@ -522,6 +526,8 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
         {
             using var fileHandle = await Root!.GetPathFileHandle(path, true);
             using var stream = await fileHandle!.CreateWritable(new FileSystemCreateWritableOptions { KeepExistingData = true });
+            var size = await fileHandle.GetSize();
+            await stream.Seek((ulong)size);
             await stream.Write(data);
             stream.Close();
             FileSystemChanged?.Invoke(this, new FileSystemChangeEventArgs(FileSystemChangeType.Changed, path));
@@ -580,7 +586,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
         /// <param name="_this"></param>
         /// <param name="path"></param>
         /// <returns></returns>
-        public async Task<ArrayBufferStream> ReadStream(string path)
+        public async Task<Stream> ReadStream(string path)
         {
             using var fileHandle = await Root!.GetPathFileHandle(path, false);
             if (fileHandle == null) throw new FileNotFoundException();

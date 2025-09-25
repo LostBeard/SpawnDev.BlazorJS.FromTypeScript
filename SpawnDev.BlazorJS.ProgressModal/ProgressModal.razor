@@ -1,18 +1,20 @@
-﻿<div style="@(ProgressModalService.Visible ? "" : "display: none;")" class="progress-modal">
-    @foreach (var p in ProgressModalService.Sessions)
+﻿@{
+    var sessions = ProgressModalService.Sessions.Where(o => o.Group == Group).ToList();
+}
+<div style="@(sessions.Any() ? "" : "display: none;")" class="progress-modal">
+    @foreach (var p in sessions)
     {
         <div class="progress-modal-session">
             <div class="progress-modal-session-text">
                 @p.Text
             </div>
             <div class="progress-modal-session-bar">
-                <RadzenProgressBar Min="@p.Min"
+                <ModalProgressBar
                                    Max="@p.Max"
                                    Unit="@p.Unit"
-                                   ProgressBarStyle="ProgressBarStyle.Base"
                                    Value="@(p.Indeterminate ? p.Max : p.Value)"
                                    ShowValue="@(!p.Indeterminate && p.ShowValue)"
-                                   Mode="@(p.Indeterminate ? ProgressBarMode.Indeterminate : ProgressBarMode.Determinate)" />
+                                   Indeterminate="@p.Indeterminate" />
             </div>
         </div>
     }
@@ -21,6 +23,9 @@
 @code {
     [Inject]
     ProgressModalService ProgressModalService { get; set; } = default!;
+
+    [Parameter]
+    public string Group { get; set; } = "";
 
     protected override void OnInitialized()
     {

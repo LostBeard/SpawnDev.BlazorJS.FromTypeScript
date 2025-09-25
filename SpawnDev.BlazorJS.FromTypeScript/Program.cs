@@ -4,6 +4,7 @@ using Radzen;
 using Sdcb.TypeScript;
 using Sdcb.TypeScript.TsTypes;
 using SpawnDev.BlazorJS;
+using SpawnDev.BlazorJS.AsyncFileSystem;
 using SpawnDev.BlazorJS.FromTypeScript;
 using SpawnDev.BlazorJS.FromTypeScript.Layout;
 using SpawnDev.BlazorJS.FromTypeScript.Layout.AppTray;
@@ -35,7 +36,8 @@ builder.Services.AddScoped<ThemeTrayIconService>();
 builder.Services.AddScoped<FileService>();
 builder.Services.AddScoped<GitHubService>();
 builder.Services.AddScoped<ProjectManager>();
-builder.Services.AddScoped<AsyncFileSystem>();
+builder.Services.AddScoped<AsyncFSBrowser>();
+builder.Services.AddScoped<IAsyncFS>(o => o.GetRequiredService<AsyncFSBrowser>());
 builder.Services.AddScoped<AssetManifestService>();
 builder.Services.AddScoped<FileIconService>();
 builder.Services.AddScoped<ProgressModalService>(); 
@@ -43,7 +45,16 @@ builder.Services.AddScoped<ProgressModalService>();
 var host = await builder.Build().StartBackgroundServices();
 
 #if DEBUG
-//var fileService = host.Services.GetRequiredService<AsyncFileSystem>();
+var FS = host.Services.GetRequiredService<AsyncFSBrowser>();
+
+//await FS.Remove("apples.txt");
+//var l1 = await FS.GetInfo("apples.txt");
+//await FS.Append("apples.txt", "0123456789");
+//var l2 = await FS.GetInfo("apples.txt");
+//await FS.Append("apples.txt", "0123456789");
+//var rb = await FS.ReadText("apples.txt");
+//var l3 = await FS.GetInfo("apples.txt");
+//var bb = true;
 
 //var text = @"
 //declare module ""../../core/Object3D.js"" {

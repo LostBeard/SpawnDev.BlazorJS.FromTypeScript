@@ -8,6 +8,9 @@
     justify-content: center;
     align-items: center;
     width: 100%;
+    color: #f0f0f0;
+    background-color: #000000f0;
+    z-index: 65535;
 }
 
 .progress-modal-session {

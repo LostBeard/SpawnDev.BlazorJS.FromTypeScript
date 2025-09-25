@@ -2,6 +2,19 @@
 
 namespace SpawnDev.BlazorJS.FromTypeScript.Parsing.ParsedNodes
 {
+    public enum MethodByReturnType
+    {
+        Unknown,
+        Constructor,
+        StaticVoid,
+        StaticValue,
+        StaticAsyncVoid,
+        StaticAsyncValue,
+        InstanceVoid,
+        InstanceValue,
+        InstanceAsyncVoid,
+        InstanceAsyncValue,
+    }
     public class ParsedMethod : Parsed
     {
         public ParsedInterfaceOrClass Parent { get; set; }
@@ -10,6 +23,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing.ParsedNodes
         public bool IsConstructor { get; set; }
         public bool IsStatic { get; set; }
         public string Name { get; set; } = "";
+        public List<string> TypeParameters { get; set; } = new List<string>();
         public ParsedType ReturnType { get; set; }
         public List<ParsedMethodParameter> Parameters { get; set; } = new List<ParsedMethodParameter>();
         public ParsedMethod()
@@ -31,6 +45,10 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing.ParsedNodes
             {
                 "event" => "ev",
                 "params" => "parameters",
+                "object" => "obj",
+                "this" => "thisObj",
+                "lock" => "bLock",
+                "struct" => "structData",
                 _ => name
             };
         }
@@ -48,6 +66,10 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing.ParsedNodes
         public string ToString(string indentation)
         {
             return ToString(indentation?.Length ?? 0);
+        }
+        string TypeParametersWithBrackets()
+        {
+            return TypeParameters?.Any() == true ? $"<{string.Join(", ", TypeParameters)}>" : "";
         }
         public string ToString(int indentation)
         {
@@ -70,7 +92,7 @@ public {CSMethodName}({GetMethodParamsAsCSharp(this)}) : base(JS.New(""{JSNameSp
 /// <summary>
 /// {SourceText?.Replace("\n", "\n/// ")}
 /// </summary>
-public static Task {CSMethodName}({GetMethodParamsAsCSharp(this)})
+public static Task {CSMethodName}{TypeParametersWithBrackets()}({GetMethodParamsAsCSharp(this)})
 {{
     return JS.CallVoidAsync(""{JSNameSpaceName}""{GetMethodParamNames(this, ", ")});
 }}
@@ -83,7 +105,7 @@ public static Task {CSMethodName}({GetMethodParamsAsCSharp(this)})
 /// <summary>
 /// {SourceText?.Replace("\n", "\n/// ")}
 /// </summary>
-public static Task<{ReturnType!.GetTypeArgumentsDelimited(Parent.CSClassName)}> {CSMethodName}({GetMethodParamsAsCSharp(this)})
+public static Task<{ReturnType!.GetTypeArgumentsDelimited(Parent.CSClassName)}> {CSMethodName}{TypeParametersWithBrackets()}({GetMethodParamsAsCSharp(this)})
 {{
     return JS.CallAsync<{ReturnType!.GetTypeArgumentsDelimited(Parent.CSClassName)}>(""{JSNameSpaceName}""{GetMethodParamNames(this, ", ")});
 }}
@@ -96,7 +118,7 @@ public static Task<{ReturnType!.GetTypeArgumentsDelimited(Parent.CSClassName)}> 
 /// <summary>
 /// {SourceText?.Trim().Replace("\n", "\n/// ")}
 /// </summary>
-public static void {CSMethodName}({GetMethodParamsAsCSharp(this)})
+public static void {CSMethodName}{TypeParametersWithBrackets()}({GetMethodParamsAsCSharp(this)})
 {{
     JS.CallVoid(""{JSNameSpaceName}""{GetMethodParamNames(this, ", ")});
 }}
@@ -109,7 +131,7 @@ public static void {CSMethodName}({GetMethodParamsAsCSharp(this)})
 /// <summary>
 /// {SourceText?.Replace("\n", "\n/// ")}
 /// </summary>
-public static {CSReturnType} {CSMethodName}({GetMethodParamsAsCSharp(this)})
+public static {CSReturnType} {CSMethodName}{TypeParametersWithBrackets()}({GetMethodParamsAsCSharp(this)})
 {{
     return JS.Call<{CSReturnType}>(""{JSNameSpaceName}""{GetMethodParamNames(this, ", ")});
 }}
@@ -124,7 +146,7 @@ public static {CSReturnType} {CSMethodName}({GetMethodParamsAsCSharp(this)})
 /// <summary>
 /// {SourceText?.Replace("\n", "\n/// ")}
 /// </summary>
-public Task {CSMethodName}({GetMethodParamsAsCSharp(this)})
+public Task {CSMethodName}{TypeParametersWithBrackets()}({GetMethodParamsAsCSharp(this)})
 {{
     return JSRef!.CallVoidAsync(""{Name}""{GetMethodParamNames(this, ", ")});
 }}
@@ -137,7 +159,7 @@ public Task {CSMethodName}({GetMethodParamsAsCSharp(this)})
 /// <summary>
 /// {SourceText?.Replace("\n", "\n/// ")}
 /// </summary>
-public Task<{ReturnType!.GetTypeArgumentsDelimited(Parent.CSClassName)}> {CSMethodName}({GetMethodParamsAsCSharp(this)})
+public Task<{ReturnType!.GetTypeArgumentsDelimited(Parent.CSClassName)}> {CSMethodName}{TypeParametersWithBrackets()}({GetMethodParamsAsCSharp(this)})
 {{
     return JSRef!.CallAsync<{ReturnType!.GetTypeArgumentsDelimited(Parent.CSClassName)}>(""{Name}""{GetMethodParamNames(this, ", ")});
 }}
@@ -150,7 +172,7 @@ public Task<{ReturnType!.GetTypeArgumentsDelimited(Parent.CSClassName)}> {CSMeth
 /// <summary>
 /// {SourceText?.Trim().Replace("\n", "\n/// ")}
 /// </summary>
-public void {CSMethodName}({GetMethodParamsAsCSharp(this)})
+public void {CSMethodName}{TypeParametersWithBrackets()}({GetMethodParamsAsCSharp(this)})
 {{
     JSRef!.CallVoid(""{Name}""{GetMethodParamNames(this, ", ")});
 }}
@@ -163,7 +185,7 @@ public void {CSMethodName}({GetMethodParamsAsCSharp(this)})
 /// <summary>
 /// {SourceText?.Replace("\n", "\n/// ")}
 /// </summary>
-public {CSReturnType} {CSMethodName}({GetMethodParamsAsCSharp(this)})
+public {CSReturnType} {CSMethodName}{TypeParametersWithBrackets()}({GetMethodParamsAsCSharp(this)})
 {{
     return JSRef!.Call<{CSReturnType}>(""{Name}""{GetMethodParamNames(this, ", ")});
 }}

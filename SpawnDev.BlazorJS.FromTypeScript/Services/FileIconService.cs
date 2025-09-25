@@ -1,4 +1,5 @@
-﻿using SpawnDev.MatrixLEDDisplay.Demo.Services;
+﻿using SpawnDev.BlazorJS.AsyncFileSystem;
+using SpawnDev.MatrixLEDDisplay.Demo.Services;
 
 namespace SpawnDev.BlazorJS.FromTypeScript.Services
 {
@@ -6,6 +7,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
     {
         public string typeScriptPath { get; } = "TypeScript";
         public string blazorProjectPath { get; } = "Blazor";
+        public string intermediateProjectPath { get; } = "Intermediate";
         Task? _Ready;
         public Task Ready => _Ready ??= InitAsync();
         AssetManifestService AssetManifestService;

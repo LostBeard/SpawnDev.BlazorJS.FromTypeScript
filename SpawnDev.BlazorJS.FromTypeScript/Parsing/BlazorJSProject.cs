@@ -1,12 +1,21 @@
-﻿using Sdcb.TypeScript;
+﻿using Radzen;
+using Sdcb.TypeScript;
 using Sdcb.TypeScript.TsTypes;
+using SpawnDev.BlazorJS.AsyncFileSystem;
 using SpawnDev.BlazorJS.FromTypeScript.Parsing.ParsedNodes;
 using SpawnDev.BlazorJS.FromTypeScript.Services;
+using SpawnDev.BlazorJS.JSObjects;
+using System.Diagnostics;
+using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
+using Array = System.Array;
+using Node = Sdcb.TypeScript.TsTypes.Node;
 using Type = System.Type;
 
 namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
 {
+    // https://ts-ast-viewer.com/
     public class BlazorJSProject
     {
         List<Type> UnhandledTypes = new List<System.Type>();
@@ -20,10 +29,10 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
         public string ProjectName { get; private set; }
         public string JSModuleNamespace { get; private set; } = "";
         public bool NameSpaceFromPath { get; private set; }
-        IAsyncFileSystem FS;
+        IAsyncFS FS;
         public event Action OnProgress = default!;
         public long TypeScriptDeclarationFileCount { get; private set; }
-        public BlazorJSProject(IAsyncFileSystem fs, string srcPath, string projectName, string jsModuleNamespace, bool nameSpaceFromPath = false)
+        public BlazorJSProject(IAsyncFS fs, string srcPath, string projectName, string jsModuleNamespace, bool nameSpaceFromPath = false)
         {
             FS = fs;
             ProjectName = projectName;
@@ -86,10 +95,213 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing
         public bool IgnoreUnderscoreMembers = true;
         public bool UseCSNaming { get; set; } = true;
         public bool ExportInterfacesAsClasses { get; set; } = false;
-        public async Task WriteProject(string OutPath, Action<int, int> progressCallback)
+        public async Task WriteViews(string OutPath, Action<int, int> progressCallback)
         {
             if (await FS.FileExists(OutPath)) throw new Exception($"{nameof(OutPath)} should be a directory. File was found.");
-            if (!await FS.DirectoryExists(OutPath)) Directory.CreateDirectory(OutPath);
+            await FS.Remove(OutPath);
+            await FS.CreateDirectory(OutPath);
+
+            var files = await FS.GetInfos(SourcePath, true);
+            var indexFile = files.FirstOrDefault(o => o.Name == "index.d.ts");
+            var tsdFiles = files.Where(o => o.Name.EndsWith(".d.ts")).ToList();
+            TypeScriptDeclarationFileCount = tsdFiles.Count;
+            var i = 0;
+            foreach (var file in tsdFiles)
+            {
+                var subPath = string.Join('/', file.FullPath.Split('/').Skip(SourcePath.Trim('/').Split('/').Length));
+                var destFile = IOPath.Combine(OutPath, subPath);
+                destFile = Regex.Replace(destFile, @"\.[^.]+$", ".view", RegexOptions.IgnoreCase);
+                var text = await FS.ReadText(file.FullPath);
+                var x = new TypeScriptAST(text, file.FullPath);
+                var view = x.RootNode.GetView();
+                await FS.Write(destFile, view);
+                i++;
+                progressCallback?.Invoke(tsdFiles.Count, i);
+            }
+        }
+        public async Task WriteSignatures(string OutPath, Action<int, int> progressCallback)
+        {
+            if (await FS.FileExists(OutPath)) throw new Exception($"{nameof(OutPath)} should be a directory. File was found.");
+            await FS.Remove(OutPath);
+            await FS.CreateDirectory(OutPath);
+
+            var files = await FS.GetInfos(SourcePath, true);
+            var indexFile = files.FirstOrDefault(o => o.Name == "index.d.ts");
+            var tsdFiles = files.Where(o => o.Name.EndsWith(".d.ts")).ToList();
+            TypeScriptDeclarationFileCount = tsdFiles.Count;
+            var i = 0;
+            var sigs = new Dictionary<string, List<string>>();
+            foreach (var file in tsdFiles)
+            {
+                var subPath = string.Join('/', file.FullPath.Split('/').Skip(SourcePath.Trim('/').Split('/').Length));
+                var destFile = IOPath.Combine(OutPath, subPath);
+                destFile = Regex.Replace(destFile, @"\.[^.]+$", ".view", RegexOptions.IgnoreCase);
+                var text = await FS.ReadText(file.FullPath);
+                var x = new TypeScriptAST(text, file.FullPath);
+                var view = x.RootNode.GetView();
+                foreach (var c in x.RootNode.OfKind(SyntaxKind.ClassDeclaration))
+                {
+                    foreach (var m in c.OfKind(SyntaxKind.PropertyDeclaration))
+                    {
+                        var sig = m.GetNodeSignature2();
+                        if (!sigs.TryGetValue(m.Kind.ToString(), out var typeSigs))
+                        {
+                            typeSigs = new List<string>();
+                            sigs[m.Kind.ToString()] = typeSigs;
+                        }
+                        if (!typeSigs.Contains(sig)) typeSigs.Add(sig);
+                    }
+                    foreach (var n in c.OfKind(SyntaxKind.MethodDeclaration))
+                    {
+                        foreach (var m in n.OfKind(SyntaxKind.Parameter))
+                        {
+                            var sig = m.GetNodeSignature2();
+                            if (!sigs.TryGetValue(m.Kind.ToString(), out var typeSigs))
+                            {
+                                typeSigs = new List<string>();
+                                sigs[m.Kind.ToString()] = typeSigs;
+                            }
+                            if (!typeSigs.Contains(sig)) typeSigs.Add(sig);
+                        }
+                    }
+                }
+                foreach (var c in x.RootNode.OfKind(SyntaxKind.InterfaceDeclaration))
+                {
+                    foreach (var m in c.OfKind(SyntaxKind.PropertySignature))
+                    {
+                        var sig = m.GetNodeSignature2();
+                        if (!sigs.TryGetValue(m.Kind.ToString(), out var typeSigs))
+                        {
+                            typeSigs = new List<string>();
+                            sigs[m.Kind.ToString()] = typeSigs;
+                        }
+                        if (!typeSigs.Contains(sig)) typeSigs.Add(sig);
+                    }
+                    foreach (var m in c.OfKind(SyntaxKind.MethodSignature))
+                    {
+                        var sig = m.GetNodeSignature2();
+                        if (!sigs.TryGetValue(m.Kind.ToString(), out var typeSigs))
+                        {
+                            typeSigs = new List<string>();
+                            sigs[m.Kind.ToString()] = typeSigs;
+                        }
+                        if (!typeSigs.Contains(sig)) typeSigs.Add(sig);
+                    }
+                }
+                foreach (var m in x.RootNode.OfKind(SyntaxKind.VariableDeclaration))
+                {
+                    var sig = m.GetNodeSignature2();
+                    if (!sigs.TryGetValue(m.Kind.ToString(), out var typeSigs))
+                    {
+                        typeSigs = new List<string>();
+                        sigs[m.Kind.ToString()] = typeSigs;
+                    }
+                    if (!typeSigs.Contains(sig)) typeSigs.Add(sig);
+                }
+                foreach (var c in x.RootNode.OfKind(SyntaxKind.EnumDeclaration))
+                {
+                    foreach (var m in c.OfKind(SyntaxKind.EnumMember))
+                    {
+                        var sig = m.GetNodeSignature2();
+                        if (!sigs.TryGetValue(m.Kind.ToString(), out var typeSigs))
+                        {
+                            typeSigs = new List<string>();
+                            sigs[m.Kind.ToString()] = typeSigs;
+                        }
+                        if (!typeSigs.Contains(sig)) typeSigs.Add(sig);
+                    }
+                }
+                await FS.Write(destFile, view);
+                i++;
+                progressCallback?.Invoke(tsdFiles.Count, i);
+            }
+            var nmtart = true;
+            foreach (var kvp in sigs)
+            {
+                var lines = kvp.Value;
+                var outFile = IOPath.Combine(OutPath, $"{kvp.Key}.txt");
+                await FS.Write(outFile, string.Join("\n", lines));
+            }
+        }
+        public async Task WriteViewsCondensed(string OutPath, Action<int, int> progressCallback)
+        {
+            if (await FS.FileExists(OutPath)) throw new Exception($"{nameof(OutPath)} should be a directory. File was found.");
+            await FS.Remove(OutPath);
+            await FS.CreateDirectory(OutPath);
+
+            var files = await FS.GetInfos(SourcePath, true);
+            var indexFile = files.FirstOrDefault(o => o.Name == "index.d.ts");
+            var tsdFiles = files.Where(o => o.Name.EndsWith(".d.ts")).ToList();
+            TypeScriptDeclarationFileCount = tsdFiles.Count;
+            var i = 0;
+            var classes = new List<Node>();
+            var interfaces = new List<Node>();
+            var typeAliases = new List<Node>();
+            var enums = new List<Node>();
+            // (global constants. constants inside classes will be handled there.)
+            var constants = new List<Node>();
+            foreach (var file in tsdFiles)
+            {
+                var subPath = string.Join('/', file.FullPath.Split('/').Skip(SourcePath.Split('/').Length));
+                var destFile = IOPath.Combine(OutPath, subPath);
+                var destDir = IOPath.GetDirectoryName(destFile);
+                destFile = Regex.Replace(destFile, @"\.[^.]+$", ".view", RegexOptions.IgnoreCase);
+                var text = await FS.ReadText(file.FullPath);
+                var x = new TypeScriptAST(text, file.FullPath);
+                var view = x.RootNode.GetView();
+
+                classes.AddRange(x.RootNode.OfKind(SyntaxKind.ClassDeclaration));
+                interfaces.AddRange(x.RootNode.OfKind(SyntaxKind.InterfaceDeclaration));
+                typeAliases.AddRange(x.RootNode.OfKind(SyntaxKind.TypeAliasDeclaration));
+                enums.AddRange(x.RootNode.OfKind(SyntaxKind.EnumDeclaration));
+                // (global constants. constants inside classes will be handled there.)
+                constants.AddRange(x.RootNode.OfKind(SyntaxKind.VariableDeclaration));
+                //await FS.Write(destFile, view);
+                i++;
+                progressCallback?.Invoke(tsdFiles.Count, i);
+            }
+
+            var sb = new StringBuilder();
+            // classes
+            foreach (var c in classes.OrderBy(o => o.IdentifierStr))
+            {
+                sb.AppendLine(c.GetView());
+            }
+            await FS.Write(IOPath.Combine(OutPath, "classes.views"), sb.ToString());
+            // interfaces
+            sb.Clear();
+            foreach (var c in interfaces.OrderBy(o => o.IdentifierStr))
+            {
+                sb.AppendLine(c.GetView());
+            }
+            await FS.Write(IOPath.Combine(OutPath, "interfaces.views"), sb.ToString());
+            // enums
+            sb.Clear();
+            foreach (var c in enums.OrderBy(o => o.IdentifierStr))
+            {
+                sb.AppendLine(c.GetView());
+            }
+            await FS.Write(IOPath.Combine(OutPath, "enums.views"), sb.ToString());
+            // type aliases
+            sb.Clear();
+            foreach (var c in typeAliases.OrderBy(o => o.IdentifierStr))
+            {
+                sb.AppendLine(c.GetView());
+            }
+            await FS.Write(IOPath.Combine(OutPath, "typealiases.views"), sb.ToString());
+            // constants
+            sb.Clear();
+            foreach (var c in constants.OrderBy(o => o.IdentifierStr))
+            {
+                sb.AppendLine(c.GetView());
+            }
+            await FS.Write(IOPath.Combine(OutPath, "constants.views"), sb.ToString());
+        }
+        public async Task WriteProject2(string OutPath, Action<int, int> progressCallback)
+        {
+            if (await FS.FileExists(OutPath)) throw new Exception($"{nameof(OutPath)} should be a directory. File was found.");
+            await FS.Remove(OutPath);
+            await FS.CreateDirectory(OutPath);
 
             // A basic .csproj file
             var proj = GetCSProjStr();
@@ -208,11 +420,194 @@ namespace {m.ModuleNamespace}
                 progressCallback?.Invoke(total, done);
             }
         }
+        public delegate void PostProcessBeforeWriteDelegate(string file, ref string cont);
+        public PostProcessBeforeWriteDelegate? PostProcessBeforeWrite = null;
+        public async Task WriteProject(string OutPath, Action<int, int> progressCallback, bool flatPath = true)
+        {
+            if (await FS.FileExists(OutPath)) throw new Exception($"{nameof(OutPath)} should be a directory. File was found.");
+            await FS.Remove(OutPath);
+            await FS.CreateDirectory(OutPath);
+
+            // A basic .csproj file
+            var proj = GetCSProjStr();
+            await FS.Write(IOPath.Combine(OutPath, $"{ProjectName}.csproj"), proj);
+
+
+            var allowGenerics = false;
+            //
+            var total = Modules.Count;
+            var done = 0;
+            foreach (var m in Modules.Values)
+            {
+                foreach (var c in m.Interfaces)
+                {
+                    var fileNameP = flatPath ? IOPath.Combine(OutPath, $"{c.Name}.cs") : IOPath.Combine(OutPath, m.SubPath, $"{c.Name}.cs");
+                    var fileName = IOPath.GetFullPath(fileNameP)!;
+                    if (!c.IsClass && !ExportInterfacesAsClasses)
+                    {
+                        var code = $@"
+using System.Text;
+using Microsoft.JSInterop;
+using SpawnDev.BlazorJS;
+using SpawnDev.BlazorJS.JSObjects;
+
+namespace {m.ModuleNamespace}
+{{
+    public interface {c.CSClassName}{(c.Extends.Any() ? $" : {string.Join(", ", c.Extends)}" : "")}
+    {{
+        #region Properties
+{string.Join("\r\n", c.Properties.Where(o => !string.IsNullOrWhiteSpace(o.Name) && (!IgnoreUnderscoreMembers || !o.Name.StartsWith("_"))).OrderBy(o => o.Name).Select(m => m.ToInterfaceString("        ")))}
+        #endregion
+
+        #region Methods
+{string.Join("\r\n", c.Methods.Where(o => !o.IsConstructor && !string.IsNullOrWhiteSpace(o.Name) && (!IgnoreUnderscoreMembers || !o.Name.StartsWith("_"))).OrderByDescending(o => o.Name).Select(m => m.ToString("        ")))}
+        #endregion
+    }}
+}}
+";
+                        PostProcessBeforeWrite?.Invoke(fileName, ref code);
+                        await FS.Write(fileName, code);
+                    }
+                    else
+                    {
+                        string getClassTypeParameterString(bool enabled)
+                        {
+                            return enabled && c.TypeParameters?.Any() == true ? $"<{string.Join(", ", c.TypeParameters)}>" : "";
+                        }
+                        var code = $@"
+using System.Text;
+using Microsoft.JSInterop;
+using SpawnDev.BlazorJS;
+using SpawnDev.BlazorJS.JSObjects;
+
+namespace {m.ModuleNamespace}
+{{
+    public class {c.CSClassName}{getClassTypeParameterString(allowGenerics)}{(c.Extends.Any() ? $" : {c.Extends.First()}" : " : JSObject")}
+    {{
+        #region Constructors
+        /// <inheritdoc/>
+        public {c.CSClassName}(IJSInProcessObjectReference _ref) : base(_ref) {{ }}
+{string.Join("\r\n", c.Methods.Where(o => o.IsConstructor).Select(m => m.ToString("        ")))}
+        #endregion
+
+        #region Properties
+{string.Join("\r\n", c.Properties.Where(o => !string.IsNullOrWhiteSpace(o.Name) && (!IgnoreUnderscoreMembers || !o.Name.StartsWith("_"))).OrderBy(o => o.Name).Select(m => m.ToString("        ")))}
+        #endregion
+
+        #region Methods
+{string.Join("\r\n", c.Methods.Where(o => !o.IsConstructor && !string.IsNullOrWhiteSpace(o.Name) && (!IgnoreUnderscoreMembers || !o.Name.StartsWith("_"))).OrderByDescending(o => o.Name).Select(m => m.ToString("        ")))}
+        #endregion
+    }}
+}}
+";
+                        PostProcessBeforeWrite?.Invoke(fileName, ref code);
+                        await FS.Write(fileName, code);
+                    }
+                }
+                foreach (var c in m.Enums)
+                {
+                    var fileNameP = flatPath ? IOPath.Combine(OutPath, $"{c.Name}.cs") : IOPath.Combine(OutPath, m.SubPath, $"{c.Name}.cs");
+                    var fileName = IOPath.GetFullPath(fileNameP)!;
+                    //var fileName = IOPath.GetFullPath(IOPath.Combine(m.DestDir, $"{c.Name}.cs"));
+                    if (c.IsNumeric)
+                    {
+                        var code = $@"
+using System.Text;
+using Microsoft.JSInterop;
+using SpawnDev.BlazorJS;
+using SpawnDev.BlazorJS.JSObjects;
+
+namespace {m.ModuleNamespace}
+{{
+    /// <summary>
+    /// {c.SourceText?.Replace("\n", "\n    /// ")}
+    /// </summary>
+    public enum {c.CSEnumName}
+    {{
+        {string.Join("\n        ", c.Values.Select(o => $"{o.Name} = {o.Value},"))}
+    }}
+}}
+";
+                        PostProcessBeforeWrite?.Invoke(fileName, ref code);
+                        await FS.Write(fileName, code);
+                    }
+                    else if (c.IsString)
+                    {
+                        var code = $@"
+using SpawnDev.BlazorJS.JsonConverters;
+using System.Text.Json.Serialization;
+
+namespace {m.ModuleNamespace}
+{{
+    /// <summary>
+    /// {c.SourceText?.Replace("\n", "\n    /// ")}
+    /// </summary>
+    [JsonConverter(typeof(EnumStringConverterFactory))]
+    public enum {c.CSEnumName}
+    {{
+        {string.Join("\n        ", c.Values.Select(o => $"[JsonPropertyName({o.Value})]\n        {o.Name},"))}
+    }}
+}}
+";
+                        PostProcessBeforeWrite?.Invoke(fileName, ref code);
+                        await FS.Write(fileName, code);
+                    }
+                }
+                if (m.TypeAliases.Any())
+                {
+                    // create a file for all type aliases
+                    var fileNameP = flatPath ? IOPath.Combine(OutPath, $"TypeDefinitions.cs") : IOPath.Combine(OutPath, m.SubPath, $"TypeDefinitions.cs");
+                    var fileName = IOPath.GetFullPath(fileNameP)!;
+                    var code = string.Join("\n", m.TypeAliases.Select(o =>
+                    {
+                        return $@"
+/// <summary>
+/// {o.SourceText?.Replace("\n", "\n/// ")}
+/// </summary>
+global using {o.Name} = SpawnDev.BlazorJS.Union<{AliasForToTypeNameArray(o.UnionTypes)}>;
+".Trim();
+                    }));
+                    PostProcessBeforeWrite?.Invoke(fileName, ref code);
+                    await FS.Append(fileName, code + "\n");
+                }
+                if (m.Constants.Any())
+                {
+                    // create a file for all type constants
+                    var fileNameP = flatPath ? IOPath.Combine(OutPath, $"Constants.cs") : IOPath.Combine(OutPath, m.SubPath, $"Constants.cs");
+                    var fileName = IOPath.GetFullPath(fileNameP)!;
+                    var code = string.Join("\n", m.Constants.Select(o =>
+                    {
+                        if (string.IsNullOrEmpty(o.Value))
+                        {
+                            return $@"
+        ///// <summary>
+        ///// {o.SourceText?.Replace("\n", "\n        /// ")}
+        ///// </summary>
+        //public const {o.CSReturnType} {o.Name} = {o.Value};
+".Trim();
+                        }
+                        else
+                        {
+                            return $@"
+        /// <summary>
+        /// {o.SourceText?.Replace("\n", "\n        /// ")}
+        /// </summary>
+        public const {o.CSReturnType} {o.Name} = {o.Value};
+".Trim();
+                        }
+                    }));
+
+                    PostProcessBeforeWrite?.Invoke(fileName, ref code);
+                    await FS.Append(fileName, code);
+                }
+                done++;
+                progressCallback?.Invoke(total, done);
+            }
+        }
         bool UseTitleCaseNaming = true;
-        // https://ts-ast-viewer.com/
         async Task ParseTypeScriptDefinitionsFile(string file)
         {
-            file = IOPath.GetFullPath(file);
+            file = IOPath.GetFullPath(file)!;
             var ext = IOPath.GetExtension(file);
             var fname = ext == ".js" ? IOPath.GetFileName(file).Replace(".js", ".cs") : IOPath.GetFileName(file).Replace(".d.ts", ".cs");
             if (!await FS.FileExists(file))
@@ -254,14 +649,9 @@ namespace {m.ModuleNamespace}
             var typescriptString = PreProcess(txt);
             var module = new ParsedModule
             {
-                //Name = subFilePath,
                 Project = this,
                 SubPath = subPath,
-                File = file,
-                //DestDir = destDir,
-                //DestFile = outFile,
                 SourceFile = file,
-                //ProjectPath = subFilePath,
                 ProjectNamespace = ProjectName,
                 ModuleNamespaceSub = !NameSpaceFromPath ? "" : subPath.Replace("/", ".").Replace("\\", "."),
             };
@@ -277,29 +667,41 @@ namespace {m.ModuleNamespace}
             text = replaceReadonly.Replace(text, "readonly");
             return text;
         }
-        List<string> Processing = new List<string>();
-        async Task ParseTypeScriptDefinitions(ParsedModule sourceFile, string text)
+        async Task ParseTypeScriptDefinitions(ParsedModule parsedModule, string text)
         {
-            var x = new TypeScriptAST(text, sourceFile.SourceFile);
-            await ParseNodeChildren(sourceFile, x.RootNode.Children);
+            var x = new TypeScriptAST(text, parsedModule.SourceFile);
+            await ParseNodeChildren(parsedModule, x.RootNode.Children);
         }
-        async Task ParseNode(ParsedModule sourceFile, Node child)
+        List<Node> GetAncestors(Node node)
         {
-            var fileDir = IOPath.GetDirectoryName(sourceFile.SourceFile);
+            var ret = new List<Node>();
+            while (node.Parent != null)
+            {
+                ret.Add((Node)node.Parent);
+                node = (Node)node.Parent;
+            }
+            return ret;
+        }
+
+        async Task ParseNode(ParsedModule parsedModule, Node child)
+        {
+            var ancestors = GetAncestors(child);
+            var inClass = ancestors.Any(o => o.Kind == SyntaxKind.ClassDeclaration);
+            var inInterface = ancestors.Any(o => o.Kind == SyntaxKind.InterfaceDeclaration);
+
+            var fileDir = IOPath.GetDirectoryName(parsedModule.SourceFile);
             var str = child.GetTextSafe();
             if (child is ModuleDeclaration moduleDeclaration)
             {
-                var nmt = true;
                 var moduleName = moduleDeclaration.IdentifierStr;
                 var moduleBlock = moduleDeclaration.Children.OfType<ModuleBlock>().FirstOrDefault();
                 if (moduleBlock != null)
                 {
-                    await ParseNodeChildren(sourceFile, moduleBlock.Children);
+                    await ParseNodeChildren(parsedModule, moduleBlock.Children);
                 }
             }
             else if (child is VariableStatement variableStatement)
             {
-                var nmt = true;
                 foreach (var variableDeclartion in variableStatement.DeclarationList.Declarations)
                 {
                     var name = variableDeclartion.IdentifierStr;
@@ -308,16 +710,31 @@ namespace {m.ModuleNamespace}
                         var nmt22 = true;
                         continue;
                     }
+                    if (name == "NodeShaderStage")
+                    {
+                        var nmtt = true;
+                    }
                     var typeNode = variableDeclartion.GetNonModifiers().Last();
                     var m = new ParsedConstant();
                     m.SourceText = variableDeclartion.GetTextSafe();
                     m.Name = variableDeclartion.IdentifierStr;
+                    var numericLiteral = typeNode.OfKind(SyntaxKind.NumericLiteral).FirstOrDefault();
+                    var stringLiteral = typeNode.OfKind(SyntaxKind.StringLiteral).FirstOrDefault();
+                    m.Value = numericLiteral?.GetTextSafe() ?? stringLiteral?.GetTextSafe() ?? "";
+                    if (numericLiteral != null)
+                    {
+                        var nmtt = numericLiteral.IdentifierStr;
+                    }
+                    else if (stringLiteral != null)
+                    {
+                        var nmtt = stringLiteral.IdentifierStr;
+                    }
                     m.Type = new ParsedType
                     {
-                        Name = typeNode.GetTypeString(),
+                        Name = typeNode.GetTypeString(""),
                         SourceText = typeNode.GetTextSafe(),
                     };
-                    sourceFile.Constants.Add(m);
+                    parsedModule.Constants.Add(m);
                 }
             }
             else if (child is FunctionDeclaration functionDeclaration)
@@ -326,14 +743,74 @@ namespace {m.ModuleNamespace}
             }
             else if (child is TypeAliasDeclaration typeAliasDeclaration)
             {
+                var nodeHasErrors = (child.Flags & NodeFlags.ThisNodeHasError) != 0;
+                var nodeOrSubHasErrors = (child.Flags & NodeFlags.ThisNodeOrAnySubNodesHasError) != 0;
+                if (nodeHasErrors || nodeOrSubHasErrors)
+                {
+                    return;
+                }
                 var aliasName = typeAliasDeclaration.IdentifierStr;
-                var unionType = typeAliasDeclaration.OfKind<UnionTypeNode>().ToList().FirstOrDefault();
-                var m = new ParsedTypeAlias();
-                m.SourceText = child.GetTextSafe();
-                m.Name = typeAliasDeclaration.IdentifierStr;
-                var unionTypes = unionType?.Children.Select(o => o.IdentifierStr).ToArray() ?? Array.Empty<string>();
-                m.UnionTypes = unionTypes;
-                sourceFile.TypeAliases.Add(m);
+                var unionNode = child.Children.FirstOrDefault(o => o.Kind == SyntaxKind.UnionType);
+                if (unionNode != null && unionNode.Children.Any() && unionNode.Children.All(o => o.Kind == SyntaxKind.LiteralType))
+                {
+                    // EnumString
+                    var m = new ParsedEnum();
+                    m.SourceText = child.GetTextSafe();
+                    m.Name = aliasName;
+                    // this could be an Enum or EnumString
+                    var literalType = unionNode.Children.First().Children.First().Kind;
+                    var values = unionNode.Children.Select(o => o.GetTextSafe()).ToList();
+                    if (literalType == SyntaxKind.StringLiteral)
+                    {
+
+                    }
+                    else if (literalType == SyntaxKind.NumericLiteral)
+                    {
+                        // Enum
+
+                    }
+                    foreach (var n in unionNode.Children)
+                    {
+                        var c = n.Children.First();
+                        var enuMentry = new ParsedEnumEntry();
+                        // not a key, value type. only has a value
+                        var value = c.GetTextSafe();
+                        switch (c.Kind)
+                        {
+                            case SyntaxKind.StringLiteral:
+                                enuMentry.Name = value.Trim('"').TitleCaseInvariant();
+                                enuMentry.Value = value;
+                                m.IsString = true;
+                                break;
+                            case SyntaxKind.NumericLiteral:
+                                enuMentry.Name = $"Opt_{m.Values.Count}";
+                                enuMentry.Value = value;
+                                m.IsNumeric = true;
+                                break;
+                            default:
+                                var nmt22 = true;
+                                break;
+                        }
+                        m.Values.Add(enuMentry);
+                    }
+                    parsedModule.Enums.Add(m);
+                    var nmtt1222 = true;
+                }
+                else
+                {
+                    var unionType = typeAliasDeclaration.OfKind<UnionTypeNode>().ToList().FirstOrDefault();
+                    var m = new ParsedTypeAlias();
+                    m.SourceText = child.GetTextSafe();
+                    m.Name = typeAliasDeclaration.IdentifierStr;
+                    var unionTypes = unionType?.Children.Select(o => o.IdentifierStr).ToArray() ?? Array.Empty<string>();
+                    m.UnionTypes = unionTypes;
+                    parsedModule.TypeAliases.Add(m);
+                }
+                //if (m.Name == "PixelFormatGPU")
+                //{
+                //    // this type is essentially an EnumString
+                //    var nmt11 = true;
+                //}
                 var nmt = true;
             }
             else if (child is InterfaceDeclaration interfaceDeclaration)
@@ -342,7 +819,7 @@ namespace {m.ModuleNamespace}
                 var nmt = child.GetView();
                 Console.WriteLine(nmt);
 #endif
-                var parsedInterface = interfaceDeclaration.ParseInterfaceOrClass(sourceFile, JSModuleNamespace);
+                var parsedInterface = interfaceDeclaration.ParseInterfaceOrClass(parsedModule, JSModuleNamespace);
                 var existing = Interfaces.FirstOrDefault(o => o.JSNameSpaceName == parsedInterface.JSNameSpaceName);
                 if (existing != null)
                 {
@@ -362,10 +839,10 @@ namespace {m.ModuleNamespace}
                         }
                         //  remove the previous parsed  one so the new  one will be used.
                         //  may need to warn the used... the project may need/use namespaceing if they are really different object types with the same name
-                        sourceFile.Interfaces.Remove(existing);
+                        parsedModule.Interfaces.Remove(existing);
                     }
                 }
-                sourceFile.Interfaces.Add(parsedInterface);
+                parsedModule.Interfaces.Add(parsedInterface);
             }
             else if (child is ClassDeclaration classDeclaration)
             {
@@ -373,7 +850,7 @@ namespace {m.ModuleNamespace}
                 var nmt = child.GetView();
                 Console.WriteLine(nmt);
 #endif
-                var parsedClass = classDeclaration.ParseInterfaceOrClass(sourceFile, JSModuleNamespace);
+                var parsedClass = classDeclaration.ParseInterfaceOrClass(parsedModule, JSModuleNamespace);
                 var existing = Interfaces.FirstOrDefault(o => o.JSNameSpaceName == parsedClass.JSNameSpaceName);
                 if (existing != null)
                 {
@@ -387,15 +864,15 @@ namespace {m.ModuleNamespace}
                         }
                         //  remove the previous parsed  one so the new  one will be used.
                         //  may need to warn the used... the project may need/use namespaceing if they are really different object types with the same name
-                        sourceFile.Interfaces.Remove(existing);
+                        parsedModule.Interfaces.Remove(existing);
                     }
                     else
                     {
                         // class definition trumps interface
-                        sourceFile.Interfaces.Remove(existing);
+                        parsedModule.Interfaces.Remove(existing);
                     }
                 }
-                sourceFile.Interfaces.Add(parsedClass);
+                parsedModule.Interfaces.Add(parsedClass);
                 //sb.AppendLine(interfaceStr);
                 var nmt2 = true;
             }
@@ -408,10 +885,25 @@ namespace {m.ModuleNamespace}
                 {
                     var enuMentry = new ParsedEnumEntry();
                     enuMentry.Name = c.IdentifierStr;
-                    enuMentry.Value = c.OfKind<NumericLiteral>().FirstOrDefault()?.GetTextSafe();
+
+                    var valueNode = c.Children.First(o => o.Kind != SyntaxKind.Identifier);
+                    switch (valueNode.Kind)
+                    {
+                        case SyntaxKind.StringLiteral:
+                            enuMentry.Value = valueNode.GetTextSafe();
+                            m.IsString = true;
+                            break;
+                        case SyntaxKind.NumericLiteral:
+                            enuMentry.Value = valueNode.GetTextSafe();
+                            m.IsNumeric = true;
+                            break;
+                        default:
+                            var nmt22 = true;
+                            break;
+                    }
                     m.Values.Add(enuMentry);
                 }
-                sourceFile.Enums.Add(m);
+                parsedModule.Enums.Add(m);
                 var nmt = true;
             }
             else if (child is EndOfFileToken endOfFileToken)
@@ -475,109 +967,13 @@ namespace {m.ModuleNamespace}
                 var nmt = true;
             }
         }
-        async Task ParseNodeChildren(ParsedModule sourceFile, List<Node> children)
+        async Task ParseNodeChildren(ParsedModule parsedModule, List<Node> children)
         {
             foreach (var child in children)
             {
-                await ParseNode(sourceFile, child);
+                await ParseNode(parsedModule, child);
             }
         }
-        //InterfaceInfo ParseInterfaceDeclaration(InterfaceDeclaration x)
-        //{
-        //    InterfaceInfo? ret = new InterfaceInfo();
-        //    var Name = GetInterfaceName(x);
-        //    if (string.IsNullOrEmpty(Name) || Name.Contains(" ") || Name.Contains("|"))
-        //    {
-        //        return ret;
-        //    }
-        //    ret.Name = Name;
-        //    ret.CSClassName = Name;
-        //    ret.CSInterfaceName = $"I{ret.CSClassName}";
-        //    var Heritage = x.OfKind(SyntaxKind.HeritageClause).FirstOrDefault() as HeritageClause;
-        //    if (Heritage != null)
-        //    {
-        //        var extendsTypes = Heritage.Types.Select(o => o.IdentifierStr).ToList();
-        //        var extendsCSTypes = extendsTypes.Select(o => GetTypeMapping(o)).Where(o => !string.IsNullOrEmpty(o)).ToList();
-        //        ret.Extends = extendsTypes;
-        //        ret.CSExtends = extendsCSTypes;
-        //    }
-
-        //    var Methods = x.OfKind(SyntaxKind.Constructor).Concat(x.OfKind(SyntaxKind.MethodDeclaration))
-        //        .Select(x => new
-        //        {
-        //            Name = x is ConstructorDeclaration ctor ? ".ctor" : x.IdentifierStr,
-        //            IsPublic = x.First.Kind != SyntaxKind.PrivateKeyword,
-        //            Args = ((ISignatureDeclaration)x).Parameters.Select(x => new
-        //            {
-        //                Name = x.Children.OfKind(SyntaxKind.Identifier).FirstOrDefault().GetTextSafe(),
-        //                Type = x.Children.OfKind(SyntaxKind.TypeReference).FirstOrDefault()?.GetTextSafe(),
-        //            }),
-        //        }).ToArray();
-
-        //    foreach (var ctor in x.OfKind(SyntaxKind.ConstructSignature))
-        //    {
-        //        var nmt2 = true;
-        //    }
-
-        //    foreach (var prop in x.OfKind(SyntaxKind.PropertySignature))
-        //    {
-        //        var propInfo = ReadInterfaceProperty(prop);
-        //        if (string.IsNullOrEmpty(propInfo.Name))
-        //        {
-        //            continue;
-        //        }
-        //        if (string.IsNullOrEmpty(propInfo.CSTypeNameFirst))
-        //        {
-        //            continue;
-        //        }
-        //        ret.Properties.Add(propInfo);
-        //    }
-
-        //    foreach (var prop in Methods)
-        //    {
-        //        var g = "";
-        //    }
-
-        //    ////var json = JsonSerializer.Serialize(tmp);
-        //    var outFile = IOPath.Combine(OutPath, $"{ret.CSClassName}.cs");
-        //    if (await FS.FileExists(outFile))
-        //    {
-        //        var exists = true;
-        //    }
-        //    var template = ret.ToCSClass();
-        //    await FS.Write(outFile, template);
-        //    return ret;
-        //}
-        //Dictionary<string, string[]> _typeMappings { get; } = new Dictionary<string, string[]> {
-        //    { "bool", new []{ "boolean" } },
-        //    { "double", new []{ "number" } },
-        //    { "string", new []{ "String" } },
-        //    { "object", new []{ "any", "object", "null" } },
-        //    { "", new []{ "<void>" } },
-        //};
-        //string GetTypeMapping(string tsType)
-        //{
-        //    var ret = tsType;
-        //    if (string.IsNullOrEmpty(tsType) || tsType.Contains(" ") || tsType.Contains("|"))
-        //    {
-        //        return "object";
-        //    }
-        //    else if (tsType == "null")
-        //    {
-        //        return "object";
-        //    }
-        //    var mappings = _typeMappings.Where(o => o.Value.Contains(tsType, StringComparer.OrdinalIgnoreCase)).ToList();
-        //    if (mappings.Count > 0)
-        //    {
-        //        ret = mappings.First().Key;
-        //    }
-        //    else
-        //    {
-        //        _typeMappings.Add(tsType, new[] { tsType });
-        //        Console.WriteLine($"tsType added: {tsType}");
-        //    }
-        //    return ret;
-        //}
         string GetInterfaceName(Node x)
         {
             var name = x.IdentifierStr;
@@ -595,26 +991,6 @@ namespace {m.ModuleNamespace}
             }
             return name;
         }
-        // https://www.typescriptlang.org/docs/handbook/interfaces.html
-        //InterfacePropertyInfo ReadInterfaceProperty(Node x)
-        //{
-        //    var ret = new InterfacePropertyInfo();
-        //    var children = x.Children.ToList();
-        //    var isReadOnly = children.First().Kind == SyntaxKind.ReadonlyKeyword;
-        //    if (isReadOnly) children = children.Skip(1).ToList();
-        //    var chIdent = children.First();
-        //    var propertyName = chIdent.Kind == SyntaxKind.ObjectLiteralExpression ? chIdent.First.GetTextSafe() : chIdent.GetTextSafe();
-        //    children = children.Skip(1).ToList();
-        //    var propertyIsOptional = children.First().Kind == SyntaxKind.QuestionToken;
-        //    if (propertyIsOptional) children = children.Skip(1).ToList();
-        //    var typesFound = ReadTypes(children);
-        //    ret.Name = propertyName;
-        //    ret.CSName = propertyName.Substring(0, 1).ToUpperInvariant() + propertyName.Substring(1);
-        //    ret.IsReadOnly = isReadOnly;
-        //    ret.TypeNames = typesFound;
-        //    ret.CSTypeNames = typesFound.Where(o => !string.IsNullOrEmpty(o) && o != "null").Select(o => GetTypeMapping(o)).Where(o => !string.IsNullOrEmpty(o)).ToList();
-        //    return ret;
-        //}
         List<string> ReadTypes(IEnumerable<Node> children)
         {
             var typesFound = new List<string>();
@@ -744,7 +1120,7 @@ namespace {m.ModuleNamespace}
 	<ItemGroup>
 		<PackageReference Include=""Microsoft.AspNetCore.Components.WebAssembly"" Version=""8.0.19"" />
 		<PackageReference Include=""System.Text.Json"" Version=""8.0.6"" />
-		<PackageReference Include=""SpawnDev.BlazorJS"" Version=""2.29.0"" />
+		<PackageReference Include=""SpawnDev.BlazorJS"" Version=""2.30.0-preview.1"" />
 	</ItemGroup>
 
 	<ItemGroup>

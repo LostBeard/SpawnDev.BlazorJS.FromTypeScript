@@ -2,11 +2,13 @@
 using Microsoft.AspNetCore.Components.Web;
 using Radzen;
 using Radzen.Blazor;
+using SpawnDev.BlazorJS.AsyncFileSystem;
 using SpawnDev.BlazorJS.FromTypeScript.Components;
 using SpawnDev.BlazorJS.FromTypeScript.Layout.AppTray;
 using SpawnDev.BlazorJS.FromTypeScript.Parsing;
 using SpawnDev.BlazorJS.FromTypeScript.Services;
 using SpawnDev.BlazorJS.JSObjects;
+using SpawnDev.BlazorJS.ProgressModal;
 using SpawnDev.MatrixLEDDisplay.Demo.Services;
 using System.IO.Compression;
 using System.Text.RegularExpressions;
@@ -17,8 +19,6 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
 {
     public partial class MainLayout
     {
-
-
         [Inject]
         ProgressModalService ProgressModalService { get; set; } = default!;
         [Inject]
@@ -30,7 +30,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
         [Inject]
         FileService FileService { get; set; } = default!;
         [Inject]
-        AsyncFileSystem FS { get; set; } = default!;
+        AsyncFSBrowser FS { get; set; } = default!;
         [Inject]
         BlazorJSRuntime JS { get; set; } = default!;
         [Inject]
@@ -247,9 +247,29 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                     Icon = "file_export",
                     Value = async () =>
                     {
-                        await NewProject(f.FullPath, libraryName);
+                        await ExtractJSObjects(f.FullPath, libraryName);
                     }
                 });
+#if DEBUG
+                options.Add(new ContextMenuItem
+                {
+                    Text = "Extract Views",
+                    Icon = "file_export",
+                    Value = async () =>
+                    {
+                        await WriteViews(f.FullPath, libraryName);
+                    }
+                });
+                options.Add(new ContextMenuItem
+                {
+                    Text = "Extract Views Condensed",
+                    Icon = "file_export",
+                    Value = async () =>
+                    {
+                        await WriteViewsCondensed(f.FullPath, libraryName);
+                    }
+                });
+#endif
             }
             var blazorRoot = f.FullPath.StartsWith($"{FileIconService.blazorProjectPath}/") && f.FullPath.Split('/').Length >= 2 ? string.Join("/", f.FullPath.Split('/').Take(2)) : null;
             var blazorName = !string.IsNullOrEmpty(blazorRoot) ? blazorRoot.Split('/').Last() : null;
@@ -266,7 +286,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                         {
                             using var pm = await ProgressModalService.NewSession($"Exporting {blazorName}");
                             var srcHandle = await FS.GetDirectoryHandle(blazorRoot!);
-                            var srcFs = await AsyncFileSystem.Create(srcHandle);
+                            var srcFs = await AsyncFSBrowser.Create(srcHandle);
                             var srcFiles = await srcFs.GetInfos("", true);
                             pm.Max = srcFiles.Count;
                             foreach (var srcFile in srcFiles)
@@ -285,24 +305,27 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                         }
                     });
                 }
-                if (FileService.ShowOpenFolderDialogSupported)
+            }
+            if (FileService.ShowOpenFolderDialogSupported)
+            {
+                options.Add(new ContextMenuItem
                 {
-                    options.Add(new ContextMenuItem
+                    Text = "Export to folder",
+                    Icon = "file_export",
+                    Value = async () =>
                     {
-                        Text = "Export to folder",
-                        Icon = "file_export",
-                        Value = async () =>
+                        using var navigator = JS.Get<Navigator>("navigator");
+                        var platform = navigator.Platform;
+                        var lineEndings = platform?.StartsWith("win", StringComparison.InvariantCultureIgnoreCase) == true ? "\r\n" : "\n";
+                        using var pm = await ProgressModalService.NewSession($"Exporting");
+                        using var target = await FileService.ShowOpenFolderDialog(new JSObjects.ShowDirectoryPickerOptions { Mode = "readwrite" });
+                        if (target != null)
                         {
-                            using var navigator = JS.Get<Navigator>("navigator");
-                            var platform = navigator.Platform;
-                            var lineEndings = platform?.StartsWith("win", StringComparison.InvariantCultureIgnoreCase) == true ? "\r\n" : "\n";
-                            using var pm = await ProgressModalService.NewSession($"Exporting {blazorName}");
-                            using var target = await FileService.ShowOpenFolderDialog(new JSObjects.ShowDirectoryPickerOptions { Mode = "readwrite" });
-                            if (target != null)
+                            if (f.IsDirectory)
                             {
-                                var destFS = await AsyncFileSystem.Create(target);
+                                var destFS = await AsyncFSBrowser.Create(target);
                                 var srcHandle = await FS.GetDirectoryHandle(blazorRoot!);
-                                var srcFs = await AsyncFileSystem.Create(srcHandle);
+                                var srcFs = await AsyncFSBrowser.Create(srcHandle);
                                 var srcFiles = await srcFs.GetInfos("", true);
                                 pm.Max = srcFiles.Count;
                                 foreach (var srcFile in srcFiles)
@@ -313,18 +336,29 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                                     }
                                     else
                                     {
-                                        var f = await srcFs.ReadText(srcFile.FullPath);
+                                        var ftext = await srcFs.ReadText(srcFile.FullPath);
                                         // change line endings to system line endings
-                                        f = Regex.Replace(f, @"\r?\n|\r", lineEndings);
-                                        await destFS.Write(srcFile.FullPath, f);
+                                        ftext = Regex.Replace(ftext, @"\r?\n|\r", lineEndings);
+                                        await destFS.Write(srcFile.FullPath, ftext);
                                     }
                                     pm.Value += 1;
                                 }
-                                NotificationService.Notify(NotificationSeverity.Success, $"Exported {blazorName}", duration: 3000);
                             }
+                            else
+                            {
+                                var destFS = await AsyncFSBrowser.Create(target);
+                                var srcHandle = await FS.GetDirectoryHandle(blazorRoot!);
+                                var fullPath = IOPath.GetFilename(f.FullPath);
+                                var ftext = await FS.ReadText(f.FullPath);
+                                // change line endings to system line endings
+                                ftext = Regex.Replace(ftext, @"\r?\n|\r", lineEndings);
+                                await destFS.Write(fullPath, ftext);
+                            }
+
+                            NotificationService.Notify(NotificationSeverity.Success, $"Export complete", duration: 3000);
                         }
-                    });
-                }
+                    }
+                });
             }
             options.Add(new ContextMenuItem
             {
@@ -572,7 +606,81 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                 StateHasChanged();
             }
         }
-        async Task NewProject(string sourcePath, string libraryName)
+        async Task WriteViewsCondensed(string sourcePath, string libraryName)
+        {
+            var projectFolder = $"{FileIconService.intermediateProjectPath}/{libraryName}";
+
+            await FS.Remove(projectFolder);
+            await FS.CreateDirectory(projectFolder);
+
+            using var pm = await ProgressModalService.NewSession("Creating project...");
+            var parser = new BlazorJSProject(FS, sourcePath, libraryName, libraryName, false);
+            void Parser_OnProgress()
+            {
+                if (parser.TypeScriptDeclarationFileCount > 0)
+                {
+                    pm.Text = $"Reading typescript...";
+                    pm.Max = parser.TypeScriptDeclarationFileCount;
+                    pm.Value = parser.Modules.Count;
+                }
+            }
+            parser.OnProgress += Parser_OnProgress;
+            try
+            {
+                pm.Text = "Writing intermediaries...";
+                await parser.WriteViewsCondensed(projectFolder, (total, done) =>
+                {
+                    pm.Text = $"Building bindings...";
+                    pm.Max = total;
+                    pm.Value = done;
+                });
+            }
+            catch (Exception ex)
+            {
+                JS.Log(ex.ToString());
+                var nmt = true;
+            }
+            parser.OnProgress -= Parser_OnProgress;
+            StateHasChanged();
+        }
+        async Task WriteViews(string sourcePath, string libraryName)
+        {
+            var projectFolder = $"{FileIconService.intermediateProjectPath}/{libraryName}";
+
+            await FS.Remove(projectFolder);
+            await FS.CreateDirectory(projectFolder);
+
+            using var pm = await ProgressModalService.NewSession("Creating project...");
+            var parser = new BlazorJSProject(FS, sourcePath, libraryName, libraryName, false);
+            void Parser_OnProgress()
+            {
+                if (parser.TypeScriptDeclarationFileCount > 0)
+                {
+                    pm.Text = $"Reading typescript... Classes: {parser.Interfaces.Count} Enums: {parser.Enums.Count} Constants: {parser.Constants.Count}";
+                    pm.Max = parser.TypeScriptDeclarationFileCount;
+                    pm.Value = parser.Modules.Count;
+                }
+            }
+            parser.OnProgress += Parser_OnProgress;
+            try
+            {
+                pm.Text = "Writing intermediaries...";
+                await parser.WriteViews(projectFolder, (total, done) =>
+                {
+                    pm.Text = $"Building bindings... Classes: {parser.Interfaces.Count} Enums: {parser.Enums.Count} Constants: {parser.Constants.Count}";
+                    pm.Max = total;
+                    pm.Value = done;
+                });
+            }
+            catch (Exception ex)
+            {
+                JS.Log(ex.ToString());
+                var nmt = true;
+            }
+            parser.OnProgress -= Parser_OnProgress;
+            StateHasChanged();
+        }
+        async Task ExtractJSObjects(string sourcePath, string libraryName)
         {
             var info = new ProjectInfo();
             info.Source = sourcePath;
@@ -593,7 +701,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                 {
                     if (parser.TypeScriptDeclarationFileCount > 0)
                     {
-                        pm.Text = $"Reading typescript... Classes: {parser.Interfaces.Count} Enums: {parser.Enums.Count} Constants: {parser.Constants.Count}";
+                        pm.Text = $"Reading typescript... Classes: {parser.Interfaces.Where(o => o.IsClass).Count()} Interfaces: {parser.Interfaces.Where(o => !o.IsClass).Count()} Enums: {parser.Enums.Count} Constants: {parser.Constants.Count}";
                         pm.Max = parser.TypeScriptDeclarationFileCount;
                         pm.Value = parser.Modules.Count;
                     }
@@ -607,7 +715,7 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Layout
                     pm.Text = "Building bindings...";
                     await parser.WriteProject(projectFolder, (total, done) =>
                     {
-                        pm.Text = $"Building bindings... Classes: {parser.Interfaces.Count} Enums: {parser.Enums.Count} Constants: {parser.Constants.Count}";
+                        pm.Text = $"Building bindings... Classes: {parser.Interfaces.Where(o => o.IsClass).Count()} Interfaces: {parser.Interfaces.Where(o => !o.IsClass).Count()} Enums: {parser.Enums.Count} Constants: {parser.Constants.Count}";
                         pm.Max = total;
                         pm.Value = done;
                     });

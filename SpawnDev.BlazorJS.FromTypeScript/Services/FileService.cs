@@ -6,7 +6,6 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
     {
         public Task Ready => _Ready ??= InitAsync();
         Task? _Ready;
-        HttpClient HttpClient;
         BlazorJSRuntime JS;
         public StorageManager Storage { get; private set; }
         public FileSystemDirectoryHandle FS { get; private set; }
@@ -16,9 +15,8 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Services
         long dbVersion = 1;
         Window? window;
         public bool ShowOpenFolderDialogSupported { get; private set; }
-        public FileService(HttpClient httpClient, BlazorJSRuntime js)
+        public FileService(BlazorJSRuntime js)
         {
-            HttpClient = httpClient;
             JS = js;
             if (js.IsWindow)
             {

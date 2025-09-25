@@ -1,4 +1,5 @@
-﻿namespace SpawnDev.BlazorJS.FromTypeScript.Services
+﻿
+namespace SpawnDev.BlazorJS.AsyncFileSystem
 {
     public class ASyncFSEntryInfo
     {
@@ -13,5 +14,6 @@
         public ASyncFSEntryInfo(bool isDirectory, string name, string directory, long lastModified = 0, long size = 0) 
             => (IsDirectory, Name, Directory, Size, LastModified, LastModifiedDate, FullPath)
             = (isDirectory, name, directory, size, lastModified, DateTimeOffset.FromUnixTimeMilliseconds(lastModified), $"{directory}/{name}".Trim('/'));
+        public ASyncFSEntryInfo(bool isDirectory, string name, string directory, DateTime lastModified, long size = 0) : this(isDirectory,name,directory, new DateTimeOffset(lastModified).ToUnixTimeMilliseconds(), size) { }
     }
 }

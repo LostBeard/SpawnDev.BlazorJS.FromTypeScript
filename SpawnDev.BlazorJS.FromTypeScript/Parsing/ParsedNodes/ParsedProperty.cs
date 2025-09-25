@@ -31,6 +31,154 @@ namespace SpawnDev.BlazorJS.FromTypeScript.Parsing.ParsedNodes
         bool ReturnsTaskVoid => CSReturnType == "Task";
         bool ReturnsTask => IsAsync;
         bool IsAsync => Type?.IsPromise ?? false;
+        public string ToInterfaceString(string indentation) => ToInterfaceString(indentation.Length);
+        public string ToInterfaceString(int indentation)
+        {
+            var ret = "";
+            //
+            #region Static
+            if (IsStatic && ReturnsTaskVoid)
+            {
+                //                ret = $@"
+                ///// <summary>
+                ///// {SourceText?.Replace("\n", "\n        /// ")}
+                ///// </summary>
+                //public static {CSReturnType} {Name.TitleCaseInvariant()} {{ get;{(!ShouldHaveSetter ? "" : $@" set;")} }}
+                //".Trim();
+            }
+            else if (IsStatic && ReturnsTask)
+            {
+                //                ret = $@"
+                ///// <summary>
+                ///// {SourceText?.Replace("\n", "\n        /// ")}
+                ///// </summary>
+                //public static {CSReturnType} {Name.TitleCaseInvariant()} {{ get;{(!ShouldHaveSetter ? "" : $@" set;")} }}
+                //".Trim();
+            }
+            else if (IsStatic)
+            {
+                //                ret = $@"
+                ///// <summary>
+                ///// {SourceText?.Replace("\n", "\n        /// ")}
+                ///// </summary>
+                //public static {CSReturnType} {Name.TitleCaseInvariant()} {{ get;{(!ShouldHaveSetter ? "" : $@" set;")} }}
+                //".Trim();
+            }
+            #endregion
+            #region Instance
+            else if (ReturnsTaskVoid)
+            {
+                ret = $@"
+/// <summary>
+/// {SourceText?.Replace("\n", "\n        /// ")}
+/// </summary>
+{CSReturnType}? {CSPropertyName} {{ get;{(!ShouldHaveSetter ? "" : $@" set;")} }}
+".Trim();
+            }
+            else if (ReturnsTask)
+            {
+                ret = $@"
+/// <summary>
+/// {SourceText?.Replace("\n", "\n        /// ")}
+/// </summary>
+{CSReturnType}? {CSPropertyName} {{ get;{(!ShouldHaveSetter ? "" : $@" set;")} }}
+".Trim();
+            }
+            else
+            {
+                ret = $@"
+/// <summary>
+/// {SourceText?.Replace("\n", "\n        /// ")}
+/// </summary>
+{CSReturnType}? {CSPropertyName} {{ get;{(!ShouldHaveSetter ? "" : $@" set;")} }}
+".Trim();
+            }
+            #endregion
+            //
+            if (indentation > 0)
+            {
+                var padding = new string(' ', indentation);
+                ret = Regex.Replace(ret, "^", padding, RegexOptions.Multiline);
+            }
+            return ret;
+        }
+        public string ToJSONString(string indentation) => ToJSONString(indentation.Length);
+        public string ToJSONString(int indentation)
+        {
+            var ret = "";
+            //
+            #region Static
+            if (IsStatic && ReturnsTaskVoid)
+            {
+//                ret = $@"
+///// <summary>
+///// {SourceText?.Replace("\n", "\n        /// ")}
+///// </summary>
+//public static {CSReturnType} {Name.TitleCaseInvariant()} {{ get;{(!ShouldHaveSetter ? "" : $@" set;")} }}
+//".Trim();
+            }
+            else if (IsStatic && ReturnsTask)
+            {
+//                ret = $@"
+///// <summary>
+///// {SourceText?.Replace("\n", "\n        /// ")}
+///// </summary>
+//public static {CSReturnType} {Name.TitleCaseInvariant()} {{ get;{(!ShouldHaveSetter ? "" : $@" set;")} }}
+//".Trim();
+            }
+            else if (IsStatic)
+            {
+//                ret = $@"
+///// <summary>
+///// {SourceText?.Replace("\n", "\n        /// ")}
+///// </summary>
+//public static {CSReturnType} {Name.TitleCaseInvariant()} {{ get;{(!ShouldHaveSetter ? "" : $@" set;")} }}
+//".Trim();
+            }
+            #endregion
+            #region Instance
+            else if (ReturnsTaskVoid)
+            {
+                ret = $@"
+/// <summary>
+/// {SourceText?.Replace("\n", "\n        /// ")}
+/// </summary>
+[JsonPropertyName(""{Name}"")]
+[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+public {CSReturnType}? {CSPropertyName} {{ get;{(!ShouldHaveSetter ? "" : $@" set;")} }}
+".Trim();
+            }
+            else if (ReturnsTask)
+            {
+                ret = $@"
+/// <summary>
+/// {SourceText?.Replace("\n", "\n        /// ")}
+/// </summary>
+[JsonPropertyName(""{Name}"")]
+[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+public {CSReturnType}? {CSPropertyName} {{ get;{(!ShouldHaveSetter ? "" : $@" set;")} }}
+".Trim();
+            }
+            else
+            {
+                ret = $@"
+/// <summary>
+/// {SourceText?.Replace("\n", "\n        /// ")}
+/// </summary>
+[JsonPropertyName(""{Name}"")]
+[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+public {CSReturnType}? {CSPropertyName} {{ get;{(!ShouldHaveSetter ? "" : $@" set;")} }}
+".Trim();
+            }
+            #endregion
+            //
+            if (indentation > 0)
+            {
+                var padding = new string(' ', indentation);
+                ret = Regex.Replace(ret, "^", padding, RegexOptions.Multiline);
+            }
+            return ret;
+        }
         public string ToString(int indentation)
         {
             var ret = "";
